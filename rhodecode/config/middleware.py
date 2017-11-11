@@ -18,16 +18,12 @@
 # RhodeCode Enterprise Edition, including its added features, Support services,
 # and proprietary license terms, please see https://rhodecode.com/licenses/
 
-"""
-Pylons middleware initialization
-"""
 import logging
 import traceback
-from collections import OrderedDict
+import collections
 
 from paste.registry import RegistryManager
 from paste.gzipper import make_gzip_middleware
-from pylons.wsgiapp import PylonsApp
 from pyramid.authorization import ACLAuthorizationPolicy
 from pyramid.config import Configurator
 from pyramid.settings import asbool, aslist
@@ -101,6 +97,8 @@ def make_app(global_conf, static_files=True, **app_conf):
         defaults to main).
 
     """
+    from pylons.wsgiapp import PylonsApp
+
     # Apply compatibility patches
     patches.kombu_1_5_1_python_2_7_11()
     patches.inspect_getargspec()
@@ -137,23 +135,16 @@ def make_pyramid_app(global_config, **settings):
       cases when these fragments are assembled from another place.
 
     """
-    # The edition string should be available in pylons too, so we add it here
-    # before copying the settings.
-    settings.setdefault('rhodecode.edition', 'Community Edition')
-
-    # As long as our Pylons application does expect "unprepared" settings, make
-    # sure that we keep an unmodified copy. This avoids unintentional change of
-    # behavior in the old application.
-    settings_pylons = settings.copy()
-
     sanitize_settings_and_apply_defaults(settings)
 
     config = Configurator(settings=settings)
     load_pyramid_environment(global_config, settings)
 
-    add_pylons_compat_data(config.registry, global_config, settings_pylons)
+    add_pylons_compat_data(config.registry, global_config, settings.copy())
 
+    # Static file view comes first
     includeme_first(config)
+
     includeme(config)
 
     pyramid_app = config.make_wsgi_app()
@@ -272,22 +263,39 @@ def error_handler(exception, request):
     return response
 
 
+def includeme_first(config):
+    # redirect automatic browser favicon.ico requests to correct place
+    def favicon_redirect(context, request):
+        return HTTPFound(
+            request.static_path('rhodecode:public/images/favicon.ico'))
+
+    config.add_view(favicon_redirect, route_name='favicon')
+    config.add_route('favicon', '/favicon.ico')
+
+    def robots_redirect(context, request):
+        return HTTPFound(
+            request.static_path('rhodecode:public/robots.txt'))
+
+    config.add_view(robots_redirect, route_name='robots')
+    config.add_route('robots', '/robots.txt')
+
+    config.add_static_view(
+        '_static/deform', 'deform:static')
+    config.add_static_view(
+        '_static/rhodecode', path='rhodecode:public', cache_max_age=3600 * 24)
+
+
 def includeme(config):
     settings = config.registry.settings
 
     # plugin information
-    config.registry.rhodecode_plugins = OrderedDict()
+    config.registry.rhodecode_plugins = collections.OrderedDict()
 
     config.add_directive(
         'register_rhodecode_plugin', register_rhodecode_plugin)
 
     if asbool(settings.get('appenlight', 'false')):
         config.include('appenlight_client.ext.pyramid_tween')
-
-    if 'mako.default_filters' not in settings:
-        # set custom default filters if we don't have it defined
-        settings['mako.imports'] = 'from rhodecode.lib.base import h_filter'
-        settings['mako.default_filters'] = 'h_filter'
 
     # Includes which are required. The application would fail without them.
     config.include('pyramid_mako')
@@ -331,15 +339,16 @@ def includeme(config):
     config.add_subscriber(write_metadata_if_needed, ApplicationCreated)
     config.add_subscriber(write_js_routes_if_enabled, ApplicationCreated)
 
-    config.add_request_method(
-        'rhodecode.lib.partial_renderer.get_partial_renderer',
-        'get_partial_renderer')
-
     # events
     # TODO(marcink): this should be done when pyramid migration is finished
     # config.add_subscriber(
     #     'rhodecode.integrations.integrations_event_handler',
     #     'rhodecode.events.RhodecodeEvent')
+
+    # request custom methods
+    config.add_request_method(
+        'rhodecode.lib.partial_renderer.get_partial_renderer',
+        'get_partial_renderer')
 
     # Set the authorization policy.
     authz_policy = ACLAuthorizationPolicy()
@@ -368,28 +377,6 @@ def includeme(config):
         config.add_view(error_handler, context=Exception)
 
     config.add_view(error_handler, context=HTTPError)
-
-
-def includeme_first(config):
-    # redirect automatic browser favicon.ico requests to correct place
-    def favicon_redirect(context, request):
-        return HTTPFound(
-            request.static_path('rhodecode:public/images/favicon.ico'))
-
-    config.add_view(favicon_redirect, route_name='favicon')
-    config.add_route('favicon', '/favicon.ico')
-
-    def robots_redirect(context, request):
-        return HTTPFound(
-            request.static_path('rhodecode:public/robots.txt'))
-
-    config.add_view(robots_redirect, route_name='robots')
-    config.add_route('robots', '/robots.txt')
-
-    config.add_static_view(
-        '_static/deform', 'deform:static')
-    config.add_static_view(
-        '_static/rhodecode', path='rhodecode:public', cache_max_age=3600 * 24)
 
 
 def wrap_app_in_wsgi_middlewares(pyramid_app, config):
@@ -452,16 +439,21 @@ def sanitize_settings_and_apply_defaults(settings):
     function.
     """
 
-    # Pyramid's mako renderer has to search in the templates folder so that the
-    # old templates still work. Ported and new templates are expected to use
-    # real asset specifications for the includes.
-    mako_directories = settings.setdefault('mako.directories', [
-        # Base templates of the original Pylons application
-        'rhodecode:templates',
-    ])
-    log.debug(
-        "Using the following Mako template directories: %s",
-        mako_directories)
+    settings.setdefault('rhodecode.edition', 'Community Edition')
+
+    if 'mako.default_filters' not in settings:
+        # set custom default filters if we don't have it defined
+        settings['mako.imports'] = 'from rhodecode.lib.base import h_filter'
+        settings['mako.default_filters'] = 'h_filter'
+
+    if 'mako.directories' not in settings:
+        mako_directories = settings.setdefault('mako.directories', [
+            # Base templates of the original application
+            'rhodecode:templates',
+        ])
+        log.debug(
+            "Using the following Mako template directories: %s",
+            mako_directories)
 
     # Default includes, possible to change as a user
     pyramid_includes = settings.setdefault('pyramid.includes', [

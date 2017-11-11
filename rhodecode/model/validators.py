@@ -41,7 +41,7 @@ from webhelpers.pylonslib.secure_form import authentication_token
 from rhodecode.authentication import (
     legacy_plugin_prefix, _import_legacy_plugin)
 from rhodecode.authentication.base import loadplugin
-from rhodecode.config.routing import ADMIN_PREFIX
+from rhodecode.apps._base import ADMIN_PREFIX
 from rhodecode.lib.auth import HasRepoGroupPermissionAny, HasPermissionAny
 from rhodecode.lib.utils import repo_name_slug, make_db_config
 from rhodecode.lib.utils2 import safe_int, str2bool, aslist, md5, safe_unicode
@@ -1081,6 +1081,9 @@ def ValidAuthPlugins():
 def ValidPattern():
 
     class _Validator(formencode.validators.FancyValidator):
+        messages = {
+            'bad_format': _(u'Url must start with http or /'),
+        }
 
         def _to_python(self, value, state):
             patterns = []
@@ -1096,7 +1099,6 @@ def ValidPattern():
 
                     values = {
                         'issuetracker_pat': value.get(_field('pattern')),
-                        'issuetracker_pat': value.get(_field('pattern')),
                         'issuetracker_url': value.get(_field('url')),
                         'issuetracker_pref': value.get(_field('prefix')),
                         'issuetracker_desc': value.get(_field('description'))
@@ -1108,6 +1110,14 @@ def ValidPattern():
                         and values['issuetracker_url'])
 
                     if has_required_fields:
+                        # validate url that it starts with http or /
+                        # otherwise it can lead to JS injections
+                        # e.g specifig javascript:<malicios code>
+                        if not values['issuetracker_url'].startswith(('http', '/')):
+                            raise formencode.Invalid(
+                                self.message('bad_format', state),
+                                value, state)
+
                         settings = [
                             ('_'.join((key, new_uid)), values[key], 'unicode')
                             for key in values]

@@ -1,4 +1,4 @@
-${h.secure_form(h.url('admin_settings_visual'), request=request)}
+${h.secure_form(h.route_path('admin_settings_visual_update'), request=request)}
 
 <div class="panel panel-default">
     <div class="panel-heading" id="general">
@@ -200,7 +200,7 @@ ${h.secure_form(h.url('admin_settings_visual'), request=request)}
                 ${_('''Custom url for the support link located at the bottom.
                     The default is set to %(default_url)s. In case there's a need
                     to change the support link to internal issue tracker, it should be done here.
-                    ''') % {'default_url': h.url('rhodecode_support')}}
+                    ''') % {'default_url': h.route_url('rhodecode_support')}}
             </span>
         </div>
     </div>

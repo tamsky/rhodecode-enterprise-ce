@@ -96,15 +96,6 @@ def url(*args, **kw):
     return pylons_url(*args, **kw)
 
 
-def url_replace(**qargs):
-    """ Returns the current request url while replacing query string args """
-
-    request = get_current_request()
-    new_args = request.GET.mixed()
-    new_args.update(qargs)
-    return url('', **new_args)
-
-
 def asset(path, ver=None, **kwargs):
     """
     Helper to generate a static asset file path for rhodecode assets
@@ -949,7 +940,8 @@ def person_by_id(id_, show_attr="username_and_name"):
 
 
 def gravatar_with_user(request, author, show_disabled=False):
-    _render = request.get_partial_renderer('base/base.mako')
+    _render = request.get_partial_renderer(
+        'rhodecode:templates/base/base.mako')
     return _render('gravatar_with_user', author, show_disabled=show_disabled)
 
 
