@@ -60,7 +60,7 @@ class RepoPullRequestsView(RepoAppView, DataGridAppView):
         c = self._get_local_tmpl_context(include_app_defaults=True)
         c.REVIEW_STATUS_APPROVED = ChangesetStatus.STATUS_APPROVED
         c.REVIEW_STATUS_REJECTED = ChangesetStatus.STATUS_REJECTED
-        self._register_global_c(c)
+
         return c
 
     def _get_pull_requests_list(
@@ -69,7 +69,7 @@ class RepoPullRequestsView(RepoAppView, DataGridAppView):
         draw, start, limit = self._extract_chunk(self.request)
         search_q, order_by, order_dir = self._extract_ordering(self.request)
         _render = self.request.get_partial_renderer(
-            'data_table/_dt_elements.mako')
+            'rhodecode:templates/data_table/_dt_elements.mako')
 
         # pagination
 
@@ -173,6 +173,7 @@ class RepoPullRequestsView(RepoAppView, DataGridAppView):
         route_name='pullrequest_show_all_data', request_method='GET',
         renderer='json_ext', xhr=True)
     def pull_request_list_data(self):
+        self.load_default_context()
 
         # additional filters
         req_get = self.request.GET
@@ -675,6 +676,7 @@ class RepoPullRequestsView(RepoAppView, DataGridAppView):
         route_name='pullrequest_repo_refs', request_method='GET',
         renderer='json_ext', xhr=True)
     def pull_request_repo_refs(self):
+        self.load_default_context()
         target_repo_name = self.request.matchdict['target_repo_name']
         repo = Repository.get_by_repo_name(target_repo_name)
         if not repo:
@@ -752,11 +754,14 @@ class RepoPullRequestsView(RepoAppView, DataGridAppView):
     def pull_request_create(self):
         _ = self.request.translate
         self.assure_not_empty_repo()
+        self.load_default_context()
 
         controls = peppercorn.parse(self.request.POST.items())
 
         try:
-            _form = PullRequestForm(self.db_repo.repo_id)().to_python(controls)
+            form = PullRequestForm(
+                self.request.translate, self.db_repo.repo_id)()
+            _form = form.to_python(controls)
         except formencode.Invalid as errors:
             if errors.error_dict.get('revisions'):
                 msg = 'Revisions: %s' % errors.error_dict['revisions']
@@ -882,6 +887,15 @@ class RepoPullRequestsView(RepoAppView, DataGridAppView):
     def pull_request_update(self):
         pull_request = PullRequest.get_or_404(
             self.request.matchdict['pull_request_id'])
+        _ = self.request.translate
+
+        self.load_default_context()
+
+        if pull_request.is_closed():
+            log.debug('update: forbidden because pull request is closed')
+            msg = _(u'Cannot update closed pull requests.')
+            h.flash(msg, category='error')
+            return True
 
         # only owner or admin can update it
         allowed_to_update = PullRequestModel().check_user_update(
@@ -981,6 +995,7 @@ class RepoPullRequestsView(RepoAppView, DataGridAppView):
         pull_request = PullRequest.get_or_404(
             self.request.matchdict['pull_request_id'])
 
+        self.load_default_context()
         check = MergeCheck.validate(pull_request, self._rhodecode_db_user,
                                     translator=self.request.translate)
         merge_possible = not check.failed
@@ -1053,6 +1068,7 @@ class RepoPullRequestsView(RepoAppView, DataGridAppView):
 
         pull_request = PullRequest.get_or_404(
             self.request.matchdict['pull_request_id'])
+        self.load_default_context()
 
         pr_closed = pull_request.is_closed()
         allowed_to_delete = PullRequestModel().check_user_delete(

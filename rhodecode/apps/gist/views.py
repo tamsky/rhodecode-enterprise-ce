@@ -67,7 +67,7 @@ class GistView(BaseAppView):
             (Gist.ACL_LEVEL_PUBLIC, _("Can be accessed by anonymous users"))
         ]
 
-        self._register_global_c(c)
+
         return c
 
     @LoginRequired()
@@ -114,7 +114,7 @@ class GistView(BaseAppView):
             c.active = 'public'
 
         _render = self.request.get_partial_renderer(
-            'data_table/_dt_elements.mako')
+            'rhodecode:templates/data_table/_dt_elements.mako')
 
         data = []
 

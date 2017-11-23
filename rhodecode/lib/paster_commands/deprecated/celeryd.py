@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Copyright (C) 2010-2017 RhodeCode GmbH
+# Copyright (C) 2013-2017 RhodeCode GmbH
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License, version 3
@@ -18,25 +18,27 @@
 # RhodeCode Enterprise Edition, including its added features, Support services,
 # and proprietary license terms, please see https://rhodecode.com/licenses/
 
-"""
-The application's Globals object
-"""
 
-from beaker.cache import CacheManager
-from beaker.util import parse_cache_config_options
+from rhodecode.lib.paster_commands import BasePasterCommand
 
 
-class Globals(object):
+class Command(BasePasterCommand):
     """
-    Globals acts as a container for objects available throughout the
-    life of the application
+    Start the celery worker
+
+    Starts the celery worker that uses a paste.deploy configuration
+    file.
     """
+    usage = 'CONFIG_FILE'
+    summary = __doc__.splitlines()[0]
+    description = "".join(__doc__.splitlines()[2:])
 
-    def __init__(self, config):
-        """One instance of Globals is created during application
-        initialization and is available during requests via the
-        'app_globals' variable
+    parser = BasePasterCommand.standard_parser(quiet=True)
 
-        """
-        self.cache = CacheManager(**parse_cache_config_options(config))
-        self.available_permissions = None   # propagated after init_model
+    def update_parser(self):
+        pass
+
+    def command(self):
+        cmd = 'celery worker --beat --app rhodecode.lib.celerylib.loader --loglevel DEBUG --ini=%s' % self.path_to_ini_file
+        raise Exception('This Command is deprecated please run: %s' % cmd)
+

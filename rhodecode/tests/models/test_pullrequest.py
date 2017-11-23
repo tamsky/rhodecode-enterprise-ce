@@ -65,7 +65,7 @@ class TestPullRequestModel(object):
             'rhodecode.model.notification.NotificationModel.create')
         self.notification_patcher.start()
         self.helper_patcher = mock.patch(
-            'rhodecode.lib.helpers.url')
+            'rhodecode.lib.helpers.route_path')
         self.helper_patcher.start()
 
         self.hook_patcher = mock.patch.object(PullRequestModel,
@@ -475,7 +475,7 @@ def merge_extras(user_regular):
 class TestUpdateCommentHandling(object):
 
     @pytest.fixture(autouse=True, scope='class')
-    def enable_outdated_comments(self, request, pylonsapp):
+    def enable_outdated_comments(self, request, baseapp):
         config_patch = mock.patch.dict(
             'rhodecode.CONFIG', {'rhodecode_use_outdated_comments': True})
         config_patch.start()

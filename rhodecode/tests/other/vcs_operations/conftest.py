@@ -57,10 +57,10 @@ def assert_no_running_instance(url):
             "Port is not free at %s, cannot start web interface" % url)
 
 
-def get_host_url(pylons_config):
+def get_host_url(pyramid_config):
     """Construct the host url using the port in the test configuration."""
     config = ConfigParser.ConfigParser()
-    config.read(pylons_config)
+    config.read(pyramid_config)
 
     return '127.0.0.1:%s' % config.get('server:main', 'port')
 
@@ -69,14 +69,14 @@ class RcWebServer(object):
     """
     Represents a running RCE web server used as a test fixture.
     """
-    def __init__(self, pylons_config):
-        self.pylons_config = pylons_config
+    def __init__(self, pyramid_config):
+        self.pyramid_config = pyramid_config
 
     def repo_clone_url(self, repo_name, **kwargs):
         params = {
             'user': TEST_USER_ADMIN_LOGIN,
             'passwd': TEST_USER_ADMIN_PASS,
-            'host': get_host_url(self.pylons_config),
+            'host': get_host_url(self.pyramid_config),
             'cloned_repo': repo_name,
         }
         params.update(**kwargs)
@@ -84,11 +84,11 @@ class RcWebServer(object):
         return _url
 
     def host_url(self):
-        return 'http://' + get_host_url(self.pylons_config)
+        return 'http://' + get_host_url(self.pyramid_config)
 
 
 @pytest.fixture(scope="module")
-def rcextensions(request, pylonsapp, tmpdir_factory):
+def rcextensions(request, baseapp, tmpdir_factory):
     """
     Installs a testing rcextensions pack to ensure they work as expected.
     """
@@ -114,7 +114,7 @@ def rcextensions(request, pylonsapp, tmpdir_factory):
 
 
 @pytest.fixture(scope="module")
-def repos(request, pylonsapp):
+def repos(request, baseapp):
     """Create a copy of each test repo in a repo group."""
     fixture = Fixture()
     repo_group = fixture.create_repo_group(REPO_GROUP)
@@ -146,7 +146,7 @@ def rc_web_server_config(testini_factory):
 
 @pytest.fixture(scope="module")
 def rc_web_server(
-        request, pylonsapp, rc_web_server_config, repos, rcextensions):
+        request, baseapp, rc_web_server_config, repos, rcextensions):
     """
     Run the web server as a subprocess.
 
@@ -188,7 +188,7 @@ def rc_web_server(
 
 
 @pytest.fixture
-def disable_locking(pylonsapp):
+def disable_locking(baseapp):
     r = Repository.get_by_repo_name(GIT_REPO)
     Repository.unlock(r)
     r.enable_locking = False
@@ -203,7 +203,7 @@ def disable_locking(pylonsapp):
 
 
 @pytest.fixture
-def enable_auth_plugins(request, pylonsapp, csrf_token):
+def enable_auth_plugins(request, baseapp, csrf_token):
     """
     Return a factory object that when called, allows to control which
     authentication plugins are enabled.

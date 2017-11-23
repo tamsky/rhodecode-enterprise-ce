@@ -42,7 +42,7 @@ class RepoFeedView(RepoAppView):
     def load_default_context(self):
         c = self._get_local_tmpl_context()
 
-        self._register_global_c(c)
+
         self._load_defaults()
         return c
 
@@ -88,7 +88,7 @@ class RepoFeedView(RepoAppView):
 
     def _get_description(self, commit):
         _renderer = self.request.get_partial_renderer(
-            'feed/atom_feed_entry.mako')
+            'rhodecode:templates/feed/atom_feed_entry.mako')
         parsed_diff, limited_diff = self._changes(commit)
         return _renderer(
             'body',

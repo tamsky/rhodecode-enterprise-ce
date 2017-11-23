@@ -34,7 +34,7 @@ log = logging.getLogger(__name__)
 class RepoChecksView(BaseAppView):
     def load_default_context(self):
         c = self._get_local_tmpl_context()
-        self._register_global_c(c)
+
         return c
 
     @NotAnonymous()
@@ -46,11 +46,9 @@ class RepoChecksView(BaseAppView):
 
         repo_name = self.request.matchdict['repo_name']
         db_repo = Repository.get_by_repo_name(repo_name)
-        if not db_repo:
-            raise HTTPNotFound()
 
         # check if maybe repo is already created
-        if db_repo.repo_state in [Repository.STATE_CREATED]:
+        if db_repo and db_repo.repo_state in [Repository.STATE_CREATED]:
             # re-check permissions before redirecting to prevent resource
             # discovery by checking the 302 code
             perm_set = ['repository.read', 'repository.write', 'repository.admin']
@@ -80,10 +78,15 @@ class RepoChecksView(BaseAppView):
 
         if task_id and task_id not in ['None']:
             import rhodecode
-            from celery.result import AsyncResult
+            from rhodecode.lib.celerylib.loader import celery_app, exceptions
             if rhodecode.CELERY_ENABLED:
-                task = AsyncResult(task_id)
-                if task.failed():
+                log.debug('celery: checking result for task:%s', task_id)
+                task = celery_app.AsyncResult(task_id)
+                try:
+                    task.get(timeout=10)
+                except exceptions.TimeoutError:
+                    task = None
+                if task and task.failed():
                     msg = self._log_creation_exception(task.result, repo_name)
                     h.flash(msg, category='error')
                     raise HTTPFound(h.route_path('home'), code=501)

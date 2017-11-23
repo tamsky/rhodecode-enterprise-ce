@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Copyright (C) 2012-2017 RhodeCode GmbH
+# Copyright (C) 2010-2017 RhodeCode GmbH
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License, version 3
@@ -18,20 +18,26 @@
 # RhodeCode Enterprise Edition, including its added features, Support services,
 # and proprietary license terms, please see https://rhodecode.com/licenses/
 
-"""
-Automatically sets the environment variable `CELERY_LOADER` to
-`celerypylons.loader:PylonsLoader`.  This ensures the loader is
-specified when accessing the rest of this package, and allows celery
-to be installed in a webapp just by importing celerypylons::
 
-    import celerypylons
+from rhodecode.lib.paster_commands import BasePasterCommand
 
-"""
 
-import os
-import warnings
+class Command(BasePasterCommand):
+    """
+    Start the celery worker
 
-CELERYPYLONS_LOADER = 'rhodecode.lib.celerypylons.loader.PylonsLoader'
-if os.environ.get('CELERY_LOADER', CELERYPYLONS_LOADER) != CELERYPYLONS_LOADER:
-    warnings.warn("'CELERY_LOADER' environment variable will be overridden by celery-pylons.")
-os.environ['CELERY_LOADER'] = CELERYPYLONS_LOADER
+    Starts the celery worker that uses a paste.deploy configuration
+    file.
+    """
+    usage = 'CONFIG_FILE [celeryd options...]'
+    summary = __doc__.splitlines()[0]
+    description = "".join(__doc__.splitlines()[2:])
+
+    parser = BasePasterCommand.standard_parser(quiet=True)
+
+    def update_parser(self):
+        pass
+
+    def command(self):
+        cmd = 'rc-setup-app %s' % self.path_to_ini_file
+        raise Exception('This Command is deprecated please run: %s' % cmd)

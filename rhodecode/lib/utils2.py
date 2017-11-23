@@ -23,7 +23,6 @@
 Some simple helper functions
 """
 
-
 import collections
 import datetime
 import dateutil.relativedelta
@@ -42,7 +41,6 @@ import sqlalchemy.engine.url
 import sqlalchemy.exc
 import sqlalchemy.sql
 import webob
-import routes.util
 import pyramid.threadlocal
 
 import rhodecode
@@ -796,11 +794,11 @@ def suuid(url=None, truncate_to=22, alphabet=None):
     return "".join(output)[:truncate_to]
 
 
-def get_current_rhodecode_user():
+def get_current_rhodecode_user(request=None):
     """
     Gets rhodecode user from request
     """
-    pyramid_request = pyramid.threadlocal.get_current_request()
+    pyramid_request = request or pyramid.threadlocal.get_current_request()
 
     # web case
     if pyramid_request and hasattr(pyramid_request, 'user'):
@@ -939,31 +937,6 @@ class Optional(object):
         if isinstance(val, cls):
             return val.getval()
         return val
-
-
-def get_routes_generator_for_server_url(server_url):
-    parsed_url = urlobject.URLObject(server_url)
-    netloc = safe_str(parsed_url.netloc)
-    script_name = safe_str(parsed_url.path)
-
-    if ':' in netloc:
-        server_name, server_port = netloc.split(':')
-    else:
-        server_name = netloc
-        server_port = (parsed_url.scheme == 'https' and '443' or '80')
-
-    environ = {
-        'REQUEST_METHOD': 'GET',
-        'PATH_INFO': '/',
-        'SERVER_NAME': server_name,
-        'SERVER_PORT': server_port,
-        'SCRIPT_NAME': script_name,
-    }
-    if parsed_url.scheme == 'https':
-        environ['HTTPS'] = 'on'
-        environ['wsgi.url_scheme'] = 'https'
-
-    return routes.util.URLGenerator(rhodecode.CONFIG['routes.map'], environ)
 
 
 def glob2re(pat):
