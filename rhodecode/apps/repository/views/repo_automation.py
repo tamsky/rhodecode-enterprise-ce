@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Copyright (C) 2017-2018 RhodeCode GmbH
+# Copyright (C) 2016-2018 RhodeCode GmbH
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License, version 3
@@ -20,19 +20,16 @@
 
 import logging
 
-from pyramid.httpexceptions import HTTPFound
 from pyramid.view import view_config
 
 from rhodecode.apps._base import RepoAppView
-from rhodecode.lib import helpers as h
-from rhodecode.lib.auth import (
-    LoginRequired, CSRFRequired, HasRepoPermissionAnyDecorator)
-from rhodecode.model.scm import ScmModel
+from rhodecode.apps.repository.utils import get_default_reviewers_data
+from rhodecode.lib.auth import LoginRequired, HasRepoPermissionAnyDecorator
 
 log = logging.getLogger(__name__)
 
 
-class RepoSettingsRemoteView(RepoAppView):
+class RepoAutomationView(RepoAppView):
     def load_default_context(self):
         c = self._get_local_tmpl_context()
         return c
@@ -40,31 +37,10 @@ class RepoSettingsRemoteView(RepoAppView):
     @LoginRequired()
     @HasRepoPermissionAnyDecorator('repository.admin')
     @view_config(
-        route_name='edit_repo_remote', request_method='GET',
+        route_name='repo_automation', request_method='GET',
         renderer='rhodecode:templates/admin/repos/repo_edit.mako')
-    def repo_remote_edit_form(self):
+    def repo_automation(self):
         c = self.load_default_context()
-        c.active = 'remote'
+        c.active = 'automation'
 
         return self._get_template_context(c)
-
-    @LoginRequired()
-    @HasRepoPermissionAnyDecorator('repository.admin')
-    @CSRFRequired()
-    @view_config(
-        route_name='edit_repo_remote_pull', request_method='POST',
-        renderer=None)
-    def repo_remote_pull_changes(self):
-        _ = self.request.translate
-        self.load_default_context()
-
-        try:
-            ScmModel().pull_changes(
-                self.db_repo_name, self._rhodecode_user.username)
-            h.flash(_('Pulled from remote location'), category='success')
-        except Exception:
-            log.exception("Exception during pull from remote")
-            h.flash(_('An error occurred during pull from remote location'),
-                    category='error')
-        raise HTTPFound(
-            h.route_path('edit_repo_remote', repo_name=self.db_repo_name))

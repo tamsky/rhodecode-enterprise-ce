@@ -94,13 +94,13 @@
     };
   };
   Markdown = super.buildPythonPackage {
-    name = "Markdown-2.6.9";
+    name = "Markdown-2.6.11";
     buildInputs = with self; [];
     doCheck = false;
     propagatedBuildInputs = with self; [];
     src = fetchurl {
-      url = "https://pypi.python.org/packages/29/82/dfe242bcfd9eec0e7bf93a80a8f8d8515a95b980c44f5c0b45606397a423/Markdown-2.6.9.tar.gz";
-      md5 = "56547d362a9abcf30955b8950b08b5e3";
+      url = "https://pypi.python.org/packages/b3/73/fc5c850f44af5889192dff783b7b0d8f3fe8d30b65c8e3f78f8f0265fecf/Markdown-2.6.11.tar.gz";
+      md5 = "a67c1b2914f7d74eeede2ebe0fdae470";
     };
     meta = {
       license = [ pkgs.lib.licenses.bsdOriginal ];
@@ -406,13 +406,13 @@
     };
   };
   bleach = super.buildPythonPackage {
-    name = "bleach-2.1.1";
+    name = "bleach-2.1.2";
     buildInputs = with self; [];
     doCheck = false;
     propagatedBuildInputs = with self; [six html5lib];
     src = fetchurl {
-      url = "https://pypi.python.org/packages/d4/3f/d517089af35b01bb9bc4eac5ea04bae342b37a5e9abbb27b7c3ce0eae070/bleach-2.1.1.tar.gz";
-      md5 = "7c5dfb1d66ea979b5a465afb12c82ec4";
+      url = "https://pypi.python.org/packages/b3/5f/0da670d30d3ffbc57cc97fa82947f81bbe3eab8d441e2d42e661f215baf2/bleach-2.1.2.tar.gz";
+      md5 = "d0b14ae43a437ee0c650e04c6063eedd";
     };
     meta = {
       license = [ pkgs.lib.licenses.asl20 ];
@@ -783,26 +783,26 @@
     };
   };
   graphviz = super.buildPythonPackage {
-    name = "graphviz-0.8.1";
+    name = "graphviz-0.8.2";
     buildInputs = with self; [];
     doCheck = false;
     propagatedBuildInputs = with self; [];
     src = fetchurl {
-      url = "https://pypi.python.org/packages/a9/a6/ee6721349489a2da6eedd3dba124f2b5ac15ee1e0a7bd4d3cfdc4fff0327/graphviz-0.8.1.zip";
-      md5 = "88d8efa88c02a735b3659fe0feaf0b96";
+      url = "https://pypi.python.org/packages/fa/d1/63b62dee9e55368f60b5ea445e6afb361bb47e692fc27553f3672e16efb8/graphviz-0.8.2.zip";
+      md5 = "50866e780f43e1cb0d073c70424fcaff";
     };
     meta = {
       license = [ pkgs.lib.licenses.mit ];
     };
   };
   greenlet = super.buildPythonPackage {
-    name = "greenlet-0.4.12";
+    name = "greenlet-0.4.13";
     buildInputs = with self; [];
     doCheck = false;
     propagatedBuildInputs = with self; [];
     src = fetchurl {
-      url = "https://pypi.python.org/packages/be/76/82af375d98724054b7e273b5d9369346937324f9bcc20980b45b068ef0b0/greenlet-0.4.12.tar.gz";
-      md5 = "e8637647d58a26c4a1f51ca393e53c00";
+      url = "https://pypi.python.org/packages/13/de/ba92335e9e76040ca7274224942282a80d54f85e342a5e33c5277c7f87eb/greenlet-0.4.13.tar.gz";
+      md5 = "6e0b9dd5385f81d478451ec8ed1d62b3";
     };
     meta = {
       license = [ pkgs.lib.licenses.mit ];
@@ -822,13 +822,13 @@
     };
   };
   html5lib = super.buildPythonPackage {
-    name = "html5lib-1.0b10";
+    name = "html5lib-1.0.1";
     buildInputs = with self; [];
     doCheck = false;
-    propagatedBuildInputs = with self; [six webencodings setuptools];
+    propagatedBuildInputs = with self; [six webencodings];
     src = fetchurl {
-      url = "https://pypi.python.org/packages/97/16/982214624095c1420c75f3bd295d9e658794aafb95fc075823de107e0ae4/html5lib-1.0b10.tar.gz";
-      md5 = "5ada1243b7a863624b2f35245b2186e9";
+      url = "https://pypi.python.org/packages/85/3e/cf449cf1b5004e87510b9368e7a5f1acd8831c2d6691edd3c62a0823f98f/html5lib-1.0.1.tar.gz";
+      md5 = "942a0688d6bdf20d087c9805c40182ad";
     };
     meta = {
       license = [ pkgs.lib.licenses.mit ];
@@ -874,13 +874,13 @@
     };
   };
   ipaddress = super.buildPythonPackage {
-    name = "ipaddress-1.0.18";
+    name = "ipaddress-1.0.19";
     buildInputs = with self; [];
     doCheck = false;
     propagatedBuildInputs = with self; [];
     src = fetchurl {
-      url = "https://pypi.python.org/packages/4e/13/774faf38b445d0b3a844b65747175b2e0500164b7c28d78e34987a5bfe06/ipaddress-1.0.18.tar.gz";
-      md5 = "310c2dfd64eb6f0df44aa8c59f2334a7";
+      url = "https://pypi.python.org/packages/f0/ba/860a4a3e283456d6b7e2ab39ce5cf11a3490ee1a363652ac50abf9f0f5df/ipaddress-1.0.19.tar.gz";
+      md5 = "d0687efaf93a32476d81e90ba0609c57";
     };
     meta = {
       license = [ pkgs.lib.licenses.psfl ];
@@ -1160,13 +1160,13 @@
     };
   };
   pexpect = super.buildPythonPackage {
-    name = "pexpect-4.3.0";
+    name = "pexpect-4.3.1";
     buildInputs = with self; [];
     doCheck = false;
     propagatedBuildInputs = with self; [ptyprocess];
     src = fetchurl {
-      url = "https://pypi.python.org/packages/f8/44/5466c30e49762bb92e442bbdf4472d6904608d211258eb3198a11f0309a4/pexpect-4.3.0.tar.gz";
-      md5 = "047a486dcd26134b74f2e67046bb61a0";
+      url = "https://pypi.python.org/packages/14/05/47c8bca66390c9b18c91f6152db4b74eb850382e8e13aa2f06dfb3036466/pexpect-4.3.1.tar.gz";
+      md5 = "16aa4549136b2d1b2bf1e0e9788d75a6";
     };
     meta = {
       license = [ pkgs.lib.licenses.isc { fullName = "ISC License (ISCL)"; } ];
@@ -1225,13 +1225,13 @@
     };
   };
   psutil = super.buildPythonPackage {
-    name = "psutil-5.4.0";
+    name = "psutil-5.4.3";
     buildInputs = with self; [];
     doCheck = false;
     propagatedBuildInputs = with self; [];
     src = fetchurl {
-      url = "https://pypi.python.org/packages/8d/96/1fc6468be91521192861966c40bd73fdf8b065eae6d82dd0f870b9825a65/psutil-5.4.0.tar.gz";
-      md5 = "01af6219b1e8fcfd53603023967713bf";
+      url = "https://pypi.python.org/packages/e2/e1/600326635f97fee89bf8426fef14c5c29f4849c79f68fd79f433d8c1bd96/psutil-5.4.3.tar.gz";
+      md5 = "3b291833dbea631db9d271aa602a169a";
     };
     meta = {
       license = [ pkgs.lib.licenses.bsdOriginal ];
@@ -1680,7 +1680,7 @@
     };
   };
   rhodecode-enterprise-ce = super.buildPythonPackage {
-    name = "rhodecode-enterprise-ce-4.11.3";
+    name = "rhodecode-enterprise-ce-4.12.0";
     buildInputs = with self; [pytest py pytest-cov pytest-sugar pytest-runner pytest-catchlog pytest-profiling gprof2dot pytest-timeout mock WebTest cov-core coverage configobj];
     doCheck = true;
     propagatedBuildInputs = with self; [setuptools-scm amqp authomatic Babel Beaker celery Chameleon channelstream click colander configobj cssselect decorator deform docutils dogpile.cache dogpile.core ecdsa FormEncode future futures gnureadline infrae.cache iso8601 itsdangerous Jinja2 billiard kombu lxml Mako Markdown MarkupSafe msgpack-python MySQL-python objgraph packaging Paste PasteDeploy PasteScript pathlib2 peppercorn psutil psycopg2 py-bcrypt pycrypto pycurl pyflakes pygments-markdown-lexer Pygments pyparsing pyramid-beaker pyramid-debugtoolbar pyramid-jinja2 pyramid-mako pyramid pysqlite python-dateutil python-ldap python-memcached python-pam pytz pyzmq py-gfm recaptcha-client redis repoze.lru requests Routes setproctitle simplejson six SQLAlchemy sshpubkeys subprocess32 supervisor Tempita translationstring trollius urllib3 URLObject venusian WebError WebHelpers2 WebHelpers WebOb Whoosh wsgiref zope.cachedescriptors zope.deprecation zope.event zope.interface nbconvert bleach nbformat jupyter-client alembic invoke bumpversion transifex-client gevent greenlet gunicorn waitress uWSGI ipdb ipython CProfileV bottle rhodecode-tools appenlight-client pytest py pytest-cov pytest-sugar pytest-runner pytest-catchlog pytest-profiling gprof2dot pytest-timeout mock WebTest cov-core coverage];
@@ -2002,13 +2002,13 @@
     };
   };
   ws4py = super.buildPythonPackage {
-    name = "ws4py-0.4.2";
+    name = "ws4py-0.4.3";
     buildInputs = with self; [];
     doCheck = false;
     propagatedBuildInputs = with self; [];
     src = fetchurl {
-      url = "https://pypi.python.org/packages/b8/98/a90f1d96ffcb15dfc220af524ce23e0a5881258dafa197673357ce1683dd/ws4py-0.4.2.tar.gz";
-      md5 = "f0603ae376707a58d205bd87a67758a2";
+      url = "https://pypi.python.org/packages/fa/a1/33c43a4304ac3b4dc81deb93cbd329de9297dd034d75c47cce64fda806bc/ws4py-0.4.3.tar.gz";
+      md5 = "d5834cf7d3965bb0da31bbb02bd8513a";
     };
     meta = {
       license = [ pkgs.lib.licenses.bsdOriginal ];

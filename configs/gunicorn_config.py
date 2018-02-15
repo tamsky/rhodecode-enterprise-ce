@@ -55,6 +55,7 @@ keepalive = 2
 
 # SERVER MECHANICS
 # None == system temp dir
+# worker_tmp_dir is recommended to be set to some tmpfs
 worker_tmp_dir = None
 tmp_upload_dir = None
 
@@ -119,16 +120,16 @@ def child_exit(server, worker):
 
 
 def pre_request(worker, req):
-    return
-    worker.log.debug("[<%-10s>] PRE WORKER: %s %s",
-                     worker.pid, req.method, req.path)
+    worker.start_time = time.time()
+    worker.log.debug(
+        "GNCRN PRE  WORKER [cnt:%s]: %s %s", worker.nr, req.method, req.path)
 
 
 def post_request(worker, req, environ, resp):
-    return
-    worker.log.debug("[<%-10s>] POST WORKER: %s %s resp: %s", worker.pid,
-                     req.method, req.path, resp.status_code)
-
+    total_time = time.time() - worker.start_time
+    worker.log.debug(
+        "GNCRN POST WORKER [cnt:%s]: %s %s resp: %s, Load Time: %.3fs",
+        worker.nr, req.method, req.path, resp.status_code, total_time)
 
 
 class RhodeCodeLogger(Logger):
