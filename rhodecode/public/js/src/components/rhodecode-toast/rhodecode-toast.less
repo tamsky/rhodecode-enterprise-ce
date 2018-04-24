@@ -1,0 +1,27 @@
+@import '../../../../css/variables';
+@import '../../../../css/mixins';
+
+.alert{
+    margin: 10px 0;
+}
+
+.toast-close {
+    margin: 0;
+    float: right;
+    cursor: pointer;
+}
+
+.toast-message-holder{
+    background: fade(#fff, 25%);
+
+    &.fixed{
+        position: fixed;
+        padding: 10px 0;
+        margin-left: 10px;
+        margin-right: 10px;
+        top: 0;
+        left: 0;
+        right:0;
+        z-index: 100;
+    }
+}

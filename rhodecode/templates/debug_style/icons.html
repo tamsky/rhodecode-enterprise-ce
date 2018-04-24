@@ -1,0 +1,90 @@
+## -*- coding: utf-8 -*-
+<%inherit file="/debug_style/index.html"/>
+
+<%def name="breadcrumbs_links()">
+    ${h.link_to(_('Style'), h.route_path('debug_style_home'))}
+    &raquo;
+    ${c.active}
+</%def>
+
+
+<%def name="real_main()">
+    <div class="box">
+        <div class="title">
+            ${self.breadcrumbs()}
+        </div>
+
+        <div class='sidebar-col-wrapper'>
+        ${self.sidebar()}
+
+        <div class="main-content">
+
+            <h2>Gravatars</h2>
+
+            <p>Usernames are always centered on an avatar to the left. 
+                Avatars are 16px square.
+                For user settings/login, some exceptions may use a larger avatar.
+                Use base.gravatar for a gravatar only, and base.gravatar_with_user
+                for a gravatar with a username.
+                Use the format below:
+            </p>
+            <div class="bs-example template-example">
+                <div class="gravatar_with_user">
+                    <img class="gravatar" alt="gravatar" src="https://secure.gravatar.com/avatar/72706ebd30734451af9ff3fb59f05ff1?d=identicon&amp;s=16">
+                    <span title="Lolek Santos <lolek@rhodecode.com>" class="user">Lolek</span>
+                </div>
+            </div>
+            <div class="bs-example template-example">
+<xmp>$</xmp><xmp>{base.gravatar_with_user(c.rhodecode_user.email, 16)}</xmp>
+            </div>
+            <div class="bs-example template-example">
+                <div class="gravatar_with_user">
+                    <img class="gravatar gravatar-large" alt="gravatar" src="https://secure.gravatar.com/avatar/72706ebd30734451af9ff3fb59f05ff1?d=identicon&amp;s=30">
+                    <span title="Lolek Santos <lolek@rhodecode.com>" class="user">Lolek</span>
+                </div>
+            </div>
+            <div class="bs-example template-example">
+<xmp>$</xmp><xmp>{base.gravatar_with_user(c.rhodecode_user.email, 30)}</xmp>
+            </div>
+            <p class="help-block">Note: Actual template variables may be different.</p>
+
+            <h2>Icon List</h2>
+
+
+            <table id="icons-list">
+                <%
+                import os
+                import string
+                with open(os.path.abspath('./rhodecode/public/css/rcicons.less')) as f:
+                    source = f.read()
+                    start = source.find('// -- ICON CLASSES -- //')
+                    end = source.find('// -- END ICON CLASSES -- //')
+                    source = source[start:end]
+
+                ico_data = []
+                for line in source.splitlines():
+                    line = line.split(':before')
+                    line = map(string.strip, line)
+                    if len(line) in [2, 3]:
+                        if len(line) == 2:
+                            ico_cls, ico_code = line
+                        else:
+                            ico_cls, ico_code, rest = line
+
+                        ico_code = ico_code[:ico_code.find('/*')]
+                        ico_data.append([ico_cls, ico_code])
+
+                %>
+                % for ico_cls, ico_code in ico_data:
+                <tr class="row">
+                    <td title="Code: ${ico_code}" class="the-icons span3"><i class="${ico_cls[1:]}"></i><td/>
+                    <td><span class="i-name">${ico_cls}</span></td>
+                    <td><span class="i-code">${ico_code}</span></td>
+                </tr>
+                % endfor
+
+            </table>
+        </div>
+      </div>
+    </div>
+</%def>

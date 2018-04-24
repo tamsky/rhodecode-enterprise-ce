@@ -1,0 +1,16 @@
+[run]
+
+branch = True
+
+include =
+    rhodecode/*
+
+omit =
+    rhodecode/lib/dbmigrate/*
+    rhodecode/lib/paster_commands/*
+
+[report]
+
+exclude_lines =
+    raise NotImplementedError
+

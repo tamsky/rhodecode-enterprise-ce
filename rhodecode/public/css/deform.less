@@ -1,0 +1,139 @@
+.deform {
+
+  * {
+    box-sizing: border-box;
+  }
+
+  .required:after {
+    color: #e32;
+    content: '*';
+    display:inline;
+  }
+
+  .control-label {
+    width: 200px;
+    padding: 10px 0px;
+    float: left;
+  }
+  .control-inputs {
+    width: 400px;
+    float: left;
+  }
+  .form-group .radio, .form-group .checkbox {
+      position: relative;
+      display: block;
+      /* margin-bottom: 10px; */
+  }
+
+  .form-group {
+    clear: left;
+    margin-bottom: 20px;
+
+    &:after { /* clear fix */
+      content: " ";
+      display: block;
+      clear: left;
+    }
+  }
+
+  .form-control {
+    width: 100%;
+    padding: 0.9em;
+    border: 1px solid #979797;
+    border-radius: 2px;
+  }
+  .form-control.select2-container {
+    padding: 0; /* padding already applied in .drop-menu a */
+  }
+
+  .form-control.readonly {
+    background: #eeeeee;
+    cursor: not-allowed;
+  }
+
+  .error-block {
+    color: red;
+    margin: 0;
+  }
+
+  .help-block {
+    margin: 0;
+  }
+
+  .deform-seq-container .control-inputs {
+    width: 100%;
+  }
+
+  .deform-seq-container .deform-seq-item-handle {
+    width: 8.3%;
+    float: left;
+  }
+
+  .deform-seq-container .deform-seq-item-group {
+    width: 91.6%;
+    float: left;
+  }
+
+  .form-control {
+      input {
+        height: 40px;
+      }
+      input[type=checkbox], input[type=radio] {
+        height: auto;
+      }
+      select {
+        height: 40px;
+      }
+  }
+
+  .form-control.select2-container {
+    height: 40px;
+  }
+
+  .deform-full-field-sequence.control-inputs {
+     width: 100%;
+  }
+
+  .deform-table-sequence {
+    .deform-seq-container {
+      .deform-seq-item {
+        margin: 0;
+        label {
+          display: none;
+        }
+        .panel-heading {
+          display: none;
+        }
+        .deform-seq-item-group > .panel {
+          padding: 0;
+          margin: 5px 0;
+          border: none;
+          &> .panel-body {
+            padding: 0;
+          }
+        }
+        &:first-child label {
+          display: block;
+        }
+      }
+    }
+  }
+  .deform-table-2-sequence {
+    .deform-seq-container {
+      .deform-seq-item {
+        .form-group {
+          width: 45% !important; padding: 0 2px; float: left; clear: none;
+        }
+      }
+    }
+  }
+  .deform-table-3-sequence {
+    .deform-seq-container {
+      .deform-seq-item {
+        .form-group {
+          width: 30% !important; padding: 0 2px; float: left; clear: none;
+        }
+      }
+    }
+  }
+}
