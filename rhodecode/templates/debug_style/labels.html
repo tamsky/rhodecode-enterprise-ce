@@ -1,0 +1,64 @@
+## -*- coding: utf-8 -*-
+<%inherit file="/debug_style/index.html"/>
+
+<%def name="breadcrumbs_links()">
+    ${h.link_to(_('Style'), h.route_path('debug_style_home'))}
+    &raquo;
+    ${c.active}
+</%def>
+
+
+<%def name="real_main()">
+<div class="box">
+    <div class="title">
+        ${self.breadcrumbs()}
+    </div>
+
+    <div class='sidebar-col-wrapper'>
+
+      ${self.sidebar()}
+
+      <div class="main-content">
+        <h2>Labels</h2>
+  
+        <h3>Labels used for tags, branches and bookmarks</h3>
+  
+        <div class="bs-example">
+          <ul class="metatag-list">
+            <li>
+              <span class="tagtag tag" title="Tag tip">
+                <a href="/fake-link"><i class="icon-tag"></i>tip</a>
+              </span>
+            </li>
+            <li>
+              <span class="branchtag tag" title="Branch default">
+               <a href="/fake-link"><i class="icon-code-fork"></i>default</a>
+              </span>
+            </li>
+            <li>
+              <span class="bookmarktag tag" title="Bookmark example">
+               <a href="/fake-link"><i class="icon-bookmark"></i>example</a>
+              </span>
+            </li>
+          </ul>
+
+        </div>
+
+        <h3>Labels used in tables</h3>
+        <div class="bs-example">
+          <ul class="metatag-list">
+              <li>[default] <span class="metatag" tag="default">default</span></li>
+              <li>[featured] <span class="metatag" tag="featured">featured</span></li>
+              <li>[stale] <span class="metatag" tag="stale">stale</span></li>
+              <li>[dead] <span class="metatag" tag="dead">dead</span></li>
+              <li>[lang =&gt; lang] <span class="metatag" tag="lang">lang</span></li>
+              <li>[license =&gt; License] <span class="metatag" tag="license"><a href="http://www.opensource.org/licenses/License">License</a></span></li>
+              <li>[requires =&gt; Repo] <span class="metatag" tag="requires">requires =&gt; <a href="#">Repo</a></span></li>
+              <li>[recommends =&gt; Repo] <span class="metatag" tag="recommends">recommends =&gt; <a href="#">Repo</a></span></li>
+              <li>[see =&gt; URI] <span class="metatag" tag="see">see =&gt; <a href="#">URI</a></span></li>
+          </ul>
+        </div>
+      </div>  <!-- .main-content  -->
+    </div>
+  </div> <!-- .box -->
+</%def>

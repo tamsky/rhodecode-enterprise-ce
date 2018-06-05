@@ -1,0 +1,51 @@
+# top level files
+
+include MANIFEST.in
+include README.rst
+include CHANGES.rst
+include LICENSE.txt
+
+include rhodecode/VERSION
+
+# docs
+recursive-include docs *
+
+# all config files
+recursive-include configs *
+
+# translations
+recursive-include rhodecode/i18n *
+
+# non-python core stuff
+recursive-include rhodecode *.cfg
+recursive-include rhodecode *.json
+recursive-include rhodecode *.ini_tmpl
+recursive-include rhodecode *.sh
+recursive-include rhodecode *.mako
+
+# 502 page
+include rhodecode/public/502.html
+
+
+# images, css
+include rhodecode/public/css/*.css
+include rhodecode/public/images/*.*
+include rhodecode/public/images/ee_features/*.*
+
+# sound files
+include rhodecode/public/sounds/*.mp3
+include rhodecode/public/sounds/*.wav
+
+# fonts
+recursive-include rhodecode/public/fonts/ProximaNova *
+recursive-include rhodecode/public/fonts/RCIcons *
+
+# js
+recursive-include rhodecode/public/js *
+
+# templates
+recursive-include rhodecode/templates *
+
+# skip any tests files
+recursive-exclude rhodecode/tests *
+

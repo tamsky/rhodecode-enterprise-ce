@@ -1,0 +1,575 @@
+// comments.less
+// For use in RhodeCode applications;
+// see style guide documentation for guidelines.
+
+
+// Comments
+@comment-outdated-opacity: 0.6;
+
+.comments {
+    width: 100%;
+}
+
+tr.inline-comments div {
+    max-width: 100%;
+
+    p {
+        white-space: normal; 
+    }
+
+    code, pre, .code, dd {
+        overflow-x: auto;
+        width: 1062px;
+    }
+
+    dd {
+        width: auto;
+    }
+}
+
+#injected_page_comments {
+    .comment-previous-link,
+    .comment-next-link,
+    .comment-links-divider {
+        display: none;
+    }
+}
+
+.add-comment {
+    margin-bottom: 10px;
+}
+.hide-comment-button .add-comment {
+    display: none;
+}
+
+.comment-bubble {
+    color: @grey4;
+    margin-top: 4px;
+    margin-right: 30px;
+    visibility: hidden;
+}
+
+.comment-label {
+    float: left;
+
+    padding: 0.4em 0.4em;
+    margin: 3px 5px 0px -10px;
+    display: inline-block;
+    min-height: 0;
+
+    text-align: center;
+    font-size: 10px;
+    line-height: .8em;
+
+    font-family: @text-italic;
+    background: #fff none;
+    color: @grey4;
+    border: 1px solid @grey4;
+    white-space: nowrap;
+
+    text-transform: uppercase;
+    min-width: 40px;
+
+    &.todo {
+        color: @color5;
+        font-family: @text-bold-italic;
+    }
+
+    .resolve {
+        cursor: pointer;
+        text-decoration: underline;
+    }
+
+    .resolved {
+        text-decoration: line-through;
+        color: @color1;
+    }
+    .resolved a {
+        text-decoration: line-through;
+        color: @color1;
+    }
+    .resolve-text {
+        color: @color1;
+        margin: 2px 8px;
+        font-family: @text-italic;
+    }
+}
+
+.has-spacer-after {
+    &:after {
+        content: ' | ';
+        color: @grey5;
+    }
+}
+
+.has-spacer-before {
+    &:before {
+        content: ' | ';
+        color: @grey5;
+    }
+}
+
+.comment {
+
+    &.comment-general {
+        border: 1px solid @grey5;
+        padding: 5px 5px 5px 5px;
+    }
+
+    margin: @padding 0;
+    padding: 4px 0 0 0;
+    line-height: 1em;
+
+    .rc-user {
+        min-width: 0;
+        margin: 0px .5em 0 0;
+
+        .user {
+            display: inline;
+        }
+    }
+
+    .meta {
+        position: relative;
+        width: 100%;
+        border-bottom: 1px solid @grey5;
+        margin: -5px 0px;
+        line-height: 24px;
+
+        &:hover .permalink {
+            visibility: visible;
+            color: @rcblue;
+        }
+    }
+
+    .author,
+    .date {
+        display: inline;
+
+        &:after {
+            content: ' | ';
+            color: @grey5;
+        }
+    }
+
+    .author-general img {
+        top: 3px;
+    }
+    .author-inline img {
+        top: 3px;
+    }
+
+    .status-change,
+    .permalink,
+    .changeset-status-lbl {
+        display: inline;
+    }
+
+    .permalink {
+        visibility: hidden;
+    }
+
+    .comment-links-divider {
+        display: inline;
+    }
+
+    .comment-links-block {
+        float:right;
+        text-align: right;
+        min-width: 85px;
+
+        [class^="icon-"]:before,
+        [class*=" icon-"]:before {
+            margin-left: 0;
+            margin-right: 0;
+        }
+    }
+
+    .comment-previous-link {
+        display: inline-block;
+
+        .arrow_comment_link{
+            cursor: pointer;
+            i {
+                font-size:10px;
+            }
+        }
+        .arrow_comment_link.disabled {
+            cursor: default;
+            color: @grey5;
+        }
+    }
+
+    .comment-next-link {
+        display: inline-block;
+
+        .arrow_comment_link{
+            cursor: pointer;
+            i {
+                font-size:10px;
+            }
+        }
+        .arrow_comment_link.disabled {
+            cursor: default;
+            color: @grey5;
+        }
+    }
+
+    .flag_status {
+        display: inline-block;
+        margin: -2px .5em 0 .25em
+    }
+
+    .delete-comment {
+        display: inline-block;
+        color: @rcblue;
+        
+        &:hover {
+            cursor: pointer;
+        }
+    }
+
+    .text {
+        clear: both;
+        .border-radius(@border-radius);
+        .box-sizing(border-box);
+
+        .markdown-block p,
+        .rst-block p {
+            margin: .5em 0 !important;
+          // TODO: lisa: This is needed because of other rst !important rules :[
+        }
+    }
+
+    .pr-version {
+        float: left;
+        margin: 0px 4px;
+    }
+    .pr-version-inline {
+        float: left;
+        margin: 0px 4px;
+    }
+    .pr-version-num {
+        font-size: 10px;
+    }
+}
+
+@comment-padding: 5px;
+
+.general-comments {
+    .comment-outdated {
+        opacity: @comment-outdated-opacity;
+    }
+}
+
+.inline-comments {
+    border-radius: @border-radius;
+    .comment {
+        margin: 0;
+        border-radius: @border-radius;
+    }
+    .comment-outdated {
+        opacity: @comment-outdated-opacity;
+    }
+
+    .comment-inline {
+        background: white;
+        padding: @comment-padding @comment-padding;
+        border: @comment-padding solid @grey6;
+
+        .text {
+            border: none;
+        }
+        .meta {
+            border-bottom: 1px solid @grey6;
+            margin: -5px 0px;
+            line-height: 24px;
+        }
+    }
+    .comment-selected {
+        border-left: 6px solid @comment-highlight-color;
+    }
+    .comment-inline-form {
+        padding: @comment-padding;
+        display: none;
+    }
+    .cb-comment-add-button {
+        margin: @comment-padding;
+    }
+     /* hide add comment button when form is open */
+    .comment-inline-form-open ~ .cb-comment-add-button {
+        display: none;
+    }
+    .comment-inline-form-open {
+        display: block;
+    }
+     /* hide add comment button when form but no comments */
+    .comment-inline-form:first-child + .cb-comment-add-button {
+        display: none;
+    }
+     /* hide add comment button when no comments or form */
+    .cb-comment-add-button:first-child {
+        display: none;
+    }
+     /* hide add comment button when only comment is being deleted */
+    .comment-deleting:first-child + .cb-comment-add-button {
+        display: none;
+    }
+}
+
+
+.show-outdated-comments {
+    display: inline;
+    color: @rcblue;
+}
+
+// Comment Form
+div.comment-form {
+    margin-top: 20px;
+}
+
+.comment-form strong {
+    display: block;
+    margin-bottom: 15px;
+}
+
+.comment-form textarea {
+    width: 100%;
+    height: 100px;
+    font-family: 'Monaco', 'Courier', 'Courier New', monospace;
+}
+
+form.comment-form {
+    margin-top: 10px;
+    margin-left: 10px;
+}
+
+.comment-inline-form .comment-block-ta,
+.comment-form .comment-block-ta,
+.comment-form .preview-box {
+    .border-radius(@border-radius);
+    .box-sizing(border-box);
+    background-color: white;
+}
+
+.comment-form-submit {
+    margin-top: 5px;
+    margin-left: 525px;
+}
+
+.file-comments {
+    display: none;
+}
+
+.comment-form .preview-box.unloaded,
+.comment-inline-form .preview-box.unloaded {
+    height: 50px;
+    text-align: center;
+    padding: 20px;
+    background-color: white;
+}
+
+.comment-footer {
+    position: relative;
+    width: 100%;
+    min-height: 42px;
+    
+    .status_box,
+    .cancel-button {
+        float: left;
+        display: inline-block;
+    }
+    
+    .action-buttons {
+        float: right;
+        display: inline-block;
+    }
+
+    .action-buttons-extra {
+        display: inline-block;
+    }
+}
+
+.comment-form {
+
+    .comment {
+        margin-left: 10px;
+    }
+
+    .comment-help {
+        color: @grey4;
+        padding: 5px 0 5px 0;
+    }
+
+    .comment-title {
+        padding: 5px 0 5px 0;
+    }
+
+    .comment-button {
+        display: inline-block;
+    }
+
+    .comment-button-input {
+        margin-right: 0;
+    }
+
+    .comment-footer {
+        margin-bottom: 110px;
+        margin-top: 10px;
+    }
+}
+
+
+.comment-form-login {
+    .comment-help {
+        padding: 0.9em; //same as the button
+    }
+
+    div.clearfix { 
+        clear: both;
+        width: 100%;
+        display: block;
+    }
+}
+
+.comment-type {
+    margin: 0px;
+    border-radius: inherit;
+    border-color: @grey6;
+}
+
+.preview-box {
+    min-height: 105px;
+    margin-bottom: 15px;
+    background-color: white;
+    .border-radius(@border-radius);
+    .box-sizing(border-box);
+}
+
+.add-another-button {
+    margin-left: 10px;
+    margin-top: 10px;
+    margin-bottom: 10px;
+}
+
+.comment .buttons {
+    float: right;
+    margin: -1px 0px 0px 0px;
+}
+
+// Inline Comment Form
+.injected_diff .comment-inline-form,
+.comment-inline-form {
+    background-color: white;
+    margin-top: 10px;
+    margin-bottom: 20px;
+}
+
+.inline-form {
+    padding: 10px 7px;
+}
+
+.inline-form div {
+    max-width: 100%;
+}
+
+.overlay {
+    display: none;
+    position: absolute;
+    width: 100%;
+    text-align: center;
+    vertical-align: middle;
+    font-size: 16px;
+    background: none repeat scroll 0 0 white;
+
+    &.submitting {
+        display: block;
+        opacity: 0.5;
+        z-index: 100;
+    }
+}
+.comment-inline-form .overlay.submitting .overlay-text {
+    margin-top: 5%;
+}
+
+.comment-inline-form .clearfix,
+.comment-form .clearfix {
+    .border-radius(@border-radius);
+    margin: 0px;
+}
+
+.comment-inline-form .comment-footer {
+    margin: 10px 0px 0px 0px;
+}
+
+.hide-inline-form-button {
+    margin-left: 5px;
+}
+.comment-button .hide-inline-form {
+    background: white;
+}
+
+.comment-area {
+    padding: 8px 12px;
+    border: 1px solid @grey5;
+    .border-radius(@border-radius);
+
+    .resolve-action {
+        padding: 1px 0px 0px 6px;
+    }
+
+}
+
+.comment-area-header .nav-links {
+    display: flex;
+    flex-flow: row wrap;
+    -webkit-flex-flow: row wrap;
+    width: 100%;
+}
+
+.comment-area-footer {
+    display: flex;
+}
+
+.comment-footer .toolbar {
+
+}
+
+.nav-links {
+    padding: 0;
+    margin: 0;
+    list-style: none;
+    height: auto;
+    border-bottom: 1px solid @grey5;
+}
+.nav-links li {
+    display: inline-block;
+}
+.nav-links li:before {
+    content: "";
+}
+.nav-links li a.disabled {
+    cursor: not-allowed;
+}
+
+.nav-links li.active a {
+    border-bottom: 2px solid @rcblue;
+    color: #000;
+    font-weight: 600;
+}
+.nav-links li a {
+    display: inline-block;
+    padding: 0px 10px 5px 10px;
+    margin-bottom: -1px;
+    font-size: 14px;
+    line-height: 28px;
+    color: #8f8f8f;
+    border-bottom: 2px solid transparent;
+}
+
+.toolbar-text {
+    float: left;
+    margin: -5px 0px 0px 0px;
+    font-size: 12px;
+}
+
