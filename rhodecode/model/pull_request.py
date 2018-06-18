@@ -444,10 +444,11 @@ class PullRequestModel(BaseModel):
 
     def create(self, created_by, source_repo, source_ref, target_repo,
                target_ref, revisions, reviewers, title, description=None,
-               reviewer_data=None, translator=None):
+               reviewer_data=None, translator=None, auth_user=None):
         translator = translator or get_current_request().translate
 
         created_by_user = self._get_user(created_by)
+        auth_user = auth_user or created_by_user
         source_repo = self._get_repo(source_repo)
         target_repo = self._get_repo(target_repo)
 
@@ -537,7 +538,7 @@ class PullRequestModel(BaseModel):
         creation_data = pull_request.get_api_data(with_merge_state=False)
         self._log_audit_action(
             'repo.pull_request.create', {'data': creation_data},
-            created_by_user, pull_request)
+            auth_user, pull_request)
 
         return pull_request
 
@@ -1218,7 +1219,8 @@ class PullRequestModel(BaseModel):
 
         return comment, status
 
-    def merge_status(self, pull_request, translator=None):
+    def merge_status(self, pull_request, translator=None,
+                     force_shadow_repo_refresh=False):
         _ = translator or get_current_request().translate
 
         if not self._is_merge_enabled(pull_request):
@@ -1232,7 +1234,9 @@ class PullRequestModel(BaseModel):
             return merge_possible, msg
 
         try:
-            resp = self._try_merge(pull_request)
+            resp = self._try_merge(
+                pull_request,
+                force_shadow_repo_refresh=force_shadow_repo_refresh)
             log.debug("Merge response: %s", resp)
             status = resp.possible, self.merge_status_message(
                 resp.failure_reason)
@@ -1269,13 +1273,13 @@ class PullRequestModel(BaseModel):
             'extensions', 'largefiles')
         return largefiles_ui and largefiles_ui[0].active
 
-    def _try_merge(self, pull_request):
+    def _try_merge(self, pull_request, force_shadow_repo_refresh=False):
         """
         Try to merge the pull request and return the merge status.
         """
         log.debug(
-            "Trying out if the pull request %s can be merged.",
-            pull_request.pull_request_id)
+            "Trying out if the pull request %s can be merged. Force_refresh=%s",
+            pull_request.pull_request_id, force_shadow_repo_refresh)
         target_vcs = pull_request.target_repo.scm_instance()
 
         # Refresh the target reference.
@@ -1292,7 +1296,8 @@ class PullRequestModel(BaseModel):
             log.debug("The target repository is locked.")
             merge_state = MergeResponse(
                 False, False, None, MergeFailureReason.TARGET_IS_LOCKED)
-        elif self._needs_merge_state_refresh(pull_request, target_ref):
+        elif force_shadow_repo_refresh or self._needs_merge_state_refresh(
+                pull_request, target_ref):
             log.debug("Refreshing the merge status of the repository.")
             merge_state = self._refresh_merge_state(
                 pull_request, target_vcs, target_ref)
@@ -1582,7 +1587,8 @@ class MergeCheck(object):
         )
 
     @classmethod
-    def validate(cls, pull_request, user, translator, fail_early=False):
+    def validate(cls, pull_request, user, translator, fail_early=False,
+                 force_shadow_repo_refresh=False):
         _ = translator
         merge_check = cls()
 
@@ -1633,7 +1639,8 @@ class MergeCheck(object):
 
         # merge possible, here is the filesystem simulation + shadow repo
         merge_status, msg = PullRequestModel().merge_status(
-            pull_request, translator=translator)
+            pull_request, translator=translator,
+            force_shadow_repo_refresh=force_shadow_repo_refresh)
         merge_check.merge_possible = merge_status
         merge_check.merge_msg = msg
         if not merge_status:

@@ -248,6 +248,7 @@ class RepoPullRequestsView(RepoAppView, DataGridAppView):
         from_version = self.request.GET.get('from_version') or version
         merge_checks = self.request.GET.get('merge_checks')
         c.fulldiff = str2bool(self.request.GET.get('fulldiff'))
+        force_refresh = str2bool(self.request.GET.get('force_refresh'))
 
         (pull_request_latest,
          pull_request_at_ver,
@@ -339,7 +340,7 @@ class RepoPullRequestsView(RepoAppView, DataGridAppView):
         # check merge capabilities
         _merge_check = MergeCheck.validate(
             pull_request_latest, user=self._rhodecode_user,
-            translator=self.request.translate)
+            translator=self.request.translate, force_shadow_repo_refresh=force_refresh)
         c.pr_merge_errors = _merge_check.error_details
         c.pr_merge_possible = not _merge_check.failed
         c.pr_merge_message = _merge_check.merge_msg
@@ -432,12 +433,14 @@ class RepoPullRequestsView(RepoAppView, DataGridAppView):
         source_scm = source_repo.scm_instance()
         target_scm = target_repo.scm_instance()
 
-        # try first shadow repo, fallback to regular repo
+        shadow_scm = None
         try:
-            commits_source_repo = pull_request_latest.get_shadow_repo()
+            shadow_scm = pull_request_latest.get_shadow_repo()
         except Exception:
             log.debug('Failed to get shadow repo', exc_info=True)
-            commits_source_repo = source_scm
+        # try first the existing source_repo, and then shadow
+        # repo if we can obtain one
+        commits_source_repo = source_scm or shadow_scm
 
         c.commits_source_repo = commits_source_repo
         c.ancestor = None  # set it to None, to hide it from PR view
@@ -766,7 +769,10 @@ class RepoPullRequestsView(RepoAppView, DataGridAppView):
                 'id': obj['name'],
                 'text': obj['name'],
                 'type': 'repo',
-                'obj': obj['dbrepo']
+                'repo_id': obj['dbrepo']['repo_id'],
+                'repo_type': obj['dbrepo']['repo_type'],
+                'private': obj['dbrepo']['private'],
+
             })
 
         data = {
@@ -890,7 +896,8 @@ class RepoPullRequestsView(RepoAppView, DataGridAppView):
             pull_request = PullRequestModel().create(
                 self._rhodecode_user.user_id, source_repo, source_ref,
                 target_repo, target_ref, commit_ids, reviewers,
-                pullrequest_title, description, reviewer_rules
+                pullrequest_title, description, reviewer_rules,
+                auth_user=self._rhodecode_user
             )
             Session().commit()
 
@@ -1199,7 +1206,8 @@ class RepoPullRequestsView(RepoAppView, DataGridAppView):
                 status_change_type=(status
                                     if status and allowed_to_change_status else None),
                 comment_type=comment_type,
-                resolves_comment_id=resolves_comment_id
+                resolves_comment_id=resolves_comment_id,
+                auth_user=self._rhodecode_user
             )
 
             if allowed_to_change_status:
@@ -1285,7 +1293,7 @@ class RepoPullRequestsView(RepoAppView, DataGridAppView):
 
         if super_admin or comment_owner or comment_repo_admin:
             old_calculated_status = comment.pull_request.calculated_review_status()
-            CommentsModel().delete(comment=comment, user=self._rhodecode_user)
+            CommentsModel().delete(comment=comment, auth_user=self._rhodecode_user)
             Session().commit()
             calculated_status = comment.pull_request.calculated_review_status()
             if old_calculated_status != calculated_status:

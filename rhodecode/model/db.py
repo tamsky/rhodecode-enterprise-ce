@@ -3763,7 +3763,8 @@ class PullRequest(Base, _PullRequestBase):
         vcs_obj = self.target_repo.scm_instance()
         shadow_repository_path = vcs_obj._get_shadow_repository_path(
             workspace_id)
-        return vcs_obj._get_shadow_instance(shadow_repository_path)
+        if os.path.isdir(shadow_repository_path):
+            return vcs_obj._get_shadow_instance(shadow_repository_path)
 
 
 class PullRequestVersion(Base, _PullRequestBase):
@@ -4490,6 +4491,24 @@ class DbMigrateVersion(Base, BaseModel):
 
 class DbSession(Base, BaseModel):
     __tablename__ = 'db_session'
+    __table_args__ = (
+        {'extend_existing': True, 'mysql_engine': 'InnoDB',
+         'mysql_charset': 'utf8', 'sqlite_autoincrement': True},
+    )
+
+    def __repr__(self):
+        return '<DB:DbSession({})>'.format(self.id)
+
+    id = Column('id', Integer())
+    namespace = Column('namespace', String(255), primary_key=True)
+    accessed = Column('accessed', DateTime, nullable=False)
+    created = Column('created', DateTime, nullable=False)
+    data = Column('data', PickleType, nullable=False)
+
+
+
+class BeakerCache(Base, BaseModel):
+    __tablename__ = 'beaker_cache'
     __table_args__ = (
         {'extend_existing': True, 'mysql_engine': 'InnoDB',
          'mysql_charset': 'utf8', 'sqlite_autoincrement': True},

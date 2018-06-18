@@ -25,9 +25,10 @@ self: super: {
     };
   });
 
-  Beaker = super.Beaker.override (attrs: {
+  beaker = super.beaker.override (attrs: {
     patches = [
       ./patch-beaker-lock-func-debug.diff
+      ./patch-beaker-metadata-reuse.diff
     ];
   });
 
@@ -83,7 +84,7 @@ self: super: {
     ];
   });
 
-  MySQL-python = super.MySQL-python.override (attrs: {
+  mysql-python = super.mysql-python.override (attrs: {
     buildInputs = attrs.buildInputs ++ [
       pkgs.openssl
     ];
@@ -185,7 +186,7 @@ self: super: {
       '';
     });
 
-  URLObject = super.URLObject.override (attrs: {
+  urlobject = super.urlobject.override (attrs: {
     meta = {
       license = {
         spdxId = "Unlicense";
