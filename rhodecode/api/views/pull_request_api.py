@@ -302,7 +302,7 @@ def merge_pull_request(
         request.environ, repo_name=target_repo.repo_name,
         username=apiuser.username, action='push',
         scm=target_repo.repo_type)
-    merge_response = PullRequestModel().merge(
+    merge_response = PullRequestModel().merge_repo(
         pull_request, apiuser, extras=extras)
     if merge_response.executed:
         PullRequestModel().close_pull_request(
@@ -548,7 +548,8 @@ def comment_pull_request(
         closing_pr=False,
         renderer=renderer,
         comment_type=comment_type,
-        resolves_comment_id=resolves_comment_id
+        resolves_comment_id=resolves_comment_id,
+        auth_user=apiuser
     )
 
     if allowed_to_change_status and status:
@@ -607,7 +608,7 @@ def create_pull_request(
             [{'username': 'nick', 'reasons': ['original author'], 'mandatory': <bool>}]
     """
 
-    source_db_repo =  get_repo_or_error(source_repo)
+    source_db_repo = get_repo_or_error(source_repo)
     target_db_repo = get_repo_or_error(target_repo)
     if not has_superadmin_permission(apiuser):
         _perms = ('repository.admin', 'repository.write', 'repository.read',)
@@ -691,6 +692,7 @@ def create_pull_request(
         title=title,
         description=description,
         reviewer_data=reviewer_rules,
+        auth_user=apiuser
     )
 
     Session().commit()

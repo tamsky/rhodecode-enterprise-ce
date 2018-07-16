@@ -103,8 +103,9 @@ class GitRepository(BaseRepository):
         if not isinstance(cmd, list):
             raise ValueError('cmd must be a list, got %s instead' % type(cmd))
 
+        skip_stderr_log = opts.pop('skip_stderr_log', False)
         out, err = self._remote.run_git_command(cmd, **opts)
-        if err:
+        if err and not skip_stderr_log:
             log.debug('Stderr output of git command "%s":\n%s', cmd, err)
         return out, err
 
@@ -756,7 +757,7 @@ class GitRepository(BaseRepository):
                 cmd = ['fetch', self.path, source_branch]
                 self.run_git_command(cmd, fail_on_stderr=False)
 
-    def _local_fetch(self, repository_path, branch_name):
+    def _local_fetch(self, repository_path, branch_name, use_origin=False):
         """
         Fetch a branch from a local repository.
         """
@@ -764,7 +765,17 @@ class GitRepository(BaseRepository):
         if repository_path == self.path:
             raise ValueError('Cannot fetch from the same repository')
 
-        cmd = ['fetch', '--no-tags', repository_path, branch_name]
+        if use_origin:
+            branch_name = '+{branch}:refs/heads/{branch}'.format(
+                branch=branch_name)
+
+        cmd = ['fetch', '--no-tags', '--update-head-ok',
+               repository_path, branch_name]
+        self.run_git_command(cmd, fail_on_stderr=False)
+
+    def _local_reset(self, branch_name):
+        branch_name = '{}'.format(branch_name)
+        cmd = ['reset', '--hard', branch_name]
         self.run_git_command(cmd, fail_on_stderr=False)
 
     def _last_fetch_heads(self):
@@ -834,12 +845,12 @@ class GitRepository(BaseRepository):
 
         # N.B.(skreft): the --no-ff option is used to enforce the creation of a
         # commit message. We also specify the user who is doing the merge.
-        cmd = ['-c', 'user.name=%s' % safe_str(user_name),
+        cmd = ['-c', 'user.name="%s"' % safe_str(user_name),
                '-c', 'user.email=%s' % safe_str(user_email),
                'merge', '--no-ff', '-m', safe_str(merge_message)]
         cmd.extend(heads)
         try:
-            self.run_git_command(cmd, fail_on_stderr=False)
+            output = self.run_git_command(cmd, fail_on_stderr=False)
         except RepositoryError:
             # Cleanup any merge leftovers
             self.run_git_command(['merge', '--abort'], fail_on_stderr=False)
@@ -891,35 +902,61 @@ class GitRepository(BaseRepository):
 
         return '%s%d' % (prefix, branch_id)
 
-    def _merge_repo(self, shadow_repository_path, target_ref,
+    def _maybe_prepare_merge_workspace(
+            self, repo_id, workspace_id, target_ref, source_ref):
+        shadow_repository_path = self._get_shadow_repository_path(
+            repo_id, workspace_id)
+        if not os.path.exists(shadow_repository_path):
+            self._local_clone(
+                shadow_repository_path, target_ref.name, source_ref.name)
+            log.debug(
+                'Prepared shadow repository in %s', shadow_repository_path)
+
+        return shadow_repository_path
+
+    def _merge_repo(self, repo_id, workspace_id, target_ref,
                     source_repo, source_ref, merge_message,
                     merger_name, merger_email, dry_run=False,
                     use_rebase=False, close_branch=False):
         if target_ref.commit_id != self.branches[target_ref.name]:
+            log.warning('Target ref %s commit mismatch %s vs %s', target_ref,
+                        target_ref.commit_id, self.branches[target_ref.name])
             return MergeResponse(
                 False, False, None, MergeFailureReason.TARGET_IS_NOT_HEAD)
 
-        shadow_repo = GitRepository(shadow_repository_path)
+        shadow_repository_path = self._maybe_prepare_merge_workspace(
+            repo_id, workspace_id, target_ref, source_ref)
+        shadow_repo = self._get_shadow_instance(shadow_repository_path)
+
         # checkout source, if it's different. Otherwise we could not
         # fetch proper commits for merge testing
         if source_ref.name != target_ref.name:
             if shadow_repo.get_remote_ref(source_ref.name):
                 shadow_repo._checkout(source_ref.name, force=True)
 
-        # checkout target
+        # checkout target, and fetch changes
         shadow_repo._checkout(target_ref.name, force=True)
-        shadow_repo._local_pull(self.path, target_ref.name)
+
+        # fetch/reset pull the target, in case it is changed
+        # this handles even force changes
+        shadow_repo._local_fetch(self.path, target_ref.name, use_origin=True)
+        shadow_repo._local_reset(target_ref.name)
 
         # Need to reload repo to invalidate the cache, or otherwise we cannot
         # retrieve the last target commit.
-        shadow_repo = GitRepository(shadow_repository_path)
+        shadow_repo = self._get_shadow_instance(shadow_repository_path)
         if target_ref.commit_id != shadow_repo.branches[target_ref.name]:
+            log.warning('Shadow Target ref %s commit mismatch %s vs %s',
+                        target_ref, target_ref.commit_id,
+                        shadow_repo.branches[target_ref.name])
             return MergeResponse(
                 False, False, None, MergeFailureReason.TARGET_IS_NOT_HEAD)
 
+        # calculate new branch
         pr_branch = shadow_repo._get_new_pr_branch(
             source_ref.name, target_ref.name)
         log.debug('using pull-request merge branch: `%s`', pr_branch)
+        # checkout to temp branch, and fetch changes
         shadow_repo._checkout(pr_branch, create=True)
         try:
             shadow_repo._local_fetch(source_repo.path, source_ref.name)
@@ -967,18 +1004,3 @@ class GitRepository(BaseRepository):
         return MergeResponse(
             merge_possible, merge_succeeded, merge_ref,
             merge_failure_reason)
-
-    def _get_shadow_repository_path(self, workspace_id):
-        # The name of the shadow repository must start with '.', so it is
-        # skipped by 'rhodecode.lib.utils.get_filesystem_repos'.
-        return os.path.join(
-            os.path.dirname(self.path),
-            '.__shadow_%s_%s' % (os.path.basename(self.path), workspace_id))
-
-    def _maybe_prepare_merge_workspace(self, workspace_id, target_ref, source_ref):
-        shadow_repository_path = self._get_shadow_repository_path(workspace_id)
-        if not os.path.exists(shadow_repository_path):
-            self._local_clone(
-                shadow_repository_path, target_ref.name, source_ref.name)
-
-        return shadow_repository_path

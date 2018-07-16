@@ -119,6 +119,7 @@ class TestCreatePullRequestApi(object):
              'mandatory': True},
         ]
         data['reviewers'] = reviewers
+
         id_, params = build_data(
             self.apikey_regular, 'create_pull_request', **data)
         response = api_call(self.app, params)
@@ -316,6 +317,7 @@ class TestCreatePullRequestApi(object):
         self.commit_ids = backend.create_master_repo(commits)
         self.source = backend.create_repo(heads=[source_head])
         self.target = backend.create_repo(heads=[target_head])
+
         data = {
             'source_repo': self.source.repo_name,
             'target_repo': self.target.repo_name,

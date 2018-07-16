@@ -39,9 +39,8 @@ from pyramid.httpexceptions import (
 from zope.cachedescriptors.property import Lazy as LazyProperty
 
 import rhodecode
-from rhodecode.authentication.base import (
-    authenticate, get_perms_cache_manager, VCS_TYPE, loadplugin)
-from rhodecode.lib import caches
+from rhodecode.authentication.base import authenticate, VCS_TYPE, loadplugin
+from rhodecode.lib import caches, rc_cache
 from rhodecode.lib.auth import AuthUser, HasPermissionAnyMiddleware
 from rhodecode.lib.base import (
     BasicAuth, get_ip_addr, get_user_agent, vcs_operation_context)
@@ -204,13 +203,14 @@ class SimpleVCS(object):
 
             # Only proceed if we got a pull request and if acl repo name from
             # URL equals the target repo name of the pull request.
-            if pull_request and (acl_repo_name ==
-                                 pull_request.target_repo.repo_name):
+            if pull_request and \
+                    (acl_repo_name == pull_request.target_repo.repo_name):
+                repo_id = pull_request.target_repo.repo_id
                 # Get file system path to shadow repository.
                 workspace_id = PullRequestModel()._workspace_id(pull_request)
                 target_vcs = pull_request.target_repo.scm_instance()
                 vcs_repo_name = target_vcs._get_shadow_repository_path(
-                    workspace_id)
+                    repo_id, workspace_id)
 
                 # Store names for later usage.
                 self.vcs_repo_name = vcs_repo_name
@@ -310,36 +310,24 @@ class SimpleVCS(object):
         :param repo_name: repository name
         """
 
-        # get instance of cache manager configured for a namespace
-        cache_manager = get_perms_cache_manager(
-            custom_ttl=cache_ttl, suffix=user.user_id)
         log.debug('AUTH_CACHE_TTL for permissions `%s` active: %s (TTL: %s)',
                   plugin_id, plugin_cache_active, cache_ttl)
 
-        # for environ based password can be empty, but then the validation is
-        # on the server that fills in the env data needed for authentication
-        _perm_calc_hash = caches.compute_key_from_params(
-            plugin_id, action, user.user_id, repo_name, ip_addr)
+        user_id = user.user_id
+        cache_namespace_uid = 'cache_user_auth.{}'.format(user_id)
+        region = rc_cache.get_or_create_region('cache_perms', cache_namespace_uid)
 
-        # _authenticate is a wrapper for .auth() method of plugin.
-        # it checks if .auth() sends proper data.
-        # For RhodeCodeExternalAuthPlugin it also maps users to
-        # Database and maps the attributes returned from .auth()
-        # to RhodeCode database. If this function returns data
-        # then auth is correct.
-        start = time.time()
-        log.debug('Running plugin `%s` permissions check', plugin_id)
+        @region.conditional_cache_on_arguments(namespace=cache_namespace_uid,
+                                               expiration_time=cache_ttl,
+                                               condition=plugin_cache_active)
+        def compute_perm_vcs(
+                cache_name, plugin_id, action, user_id, repo_name, ip_addr):
 
-        def perm_func():
-            """
-            This function is used internally in Cache of Beaker to calculate
-            Results
-            """
             log.debug('auth: calculating permission access now...')
             # check IP
             inherit = user.inherit_default_permissions
             ip_allowed = AuthUser.check_ip_allowed(
-                user.user_id, ip_addr, inherit_from_default=inherit)
+                user_id, ip_addr, inherit_from_default=inherit)
             if ip_allowed:
                 log.info('Access for IP:%s allowed', ip_addr)
             else:
@@ -359,12 +347,13 @@ class SimpleVCS(object):
 
             return True
 
-        if plugin_cache_active:
-            log.debug('Trying to fetch cached perms by %s', _perm_calc_hash[:6])
-            perm_result = cache_manager.get(
-                _perm_calc_hash, createfunc=perm_func)
-        else:
-            perm_result = perm_func()
+        start = time.time()
+        log.debug('Running plugin `%s` permissions check', plugin_id)
+
+        # for environ based auth, password can be empty, but then the validation is
+        # on the server that fills in the env data needed for authentication
+        perm_result = compute_perm_vcs(
+            'vcs_permissions', plugin_id, action, user.user_id, repo_name, ip_addr)
 
         auth_time = time.time() - start
         log.debug('Permissions for plugin `%s` completed in %.3fs, '
@@ -662,7 +651,7 @@ class SimpleVCS(object):
 
         return prepare_callback_daemon(
             extras, protocol=vcs_settings.HOOKS_PROTOCOL,
-            use_direct_calls=direct_calls, txn_id=txn_id)
+            host=vcs_settings.HOOKS_HOST, use_direct_calls=direct_calls, txn_id=txn_id)
 
 
 def _should_check_locking(query_string):

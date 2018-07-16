@@ -17,27 +17,20 @@
 # This program is dual-licensed. If you wish to learn more about the
 # RhodeCode Enterprise Edition, including its added features, Support services,
 # and proprietary license terms, please see https://rhodecode.com/licenses/
-
+import functools
 
 import beaker
 import logging
 import threading
 
-from beaker.cache import _cache_decorate, cache_regions, region_invalidate
+from beaker.cache import _cache_decorate, region_invalidate
 from sqlalchemy.exc import IntegrityError
 
-from rhodecode.lib.utils import safe_str, md5
+from rhodecode.lib.utils import safe_str, sha1
 from rhodecode.model.db import Session, CacheKey
 
 log = logging.getLogger(__name__)
 
-FILE_TREE = 'cache_file_tree'
-FILE_TREE_META = 'cache_file_tree_metadata'
-FILE_SEARCH_TREE_META = 'cache_file_search_metadata'
-SUMMARY_STATS = 'cache_summary_stats'
-
-# This list of caches gets purged when invalidation happens
-USED_REPO_CACHES = (FILE_TREE, FILE_SEARCH_TREE_META)
 
 DEFAULT_CACHE_MANAGER_CONFIG = {
     'type': 'memorylru_base',
@@ -91,89 +84,15 @@ def configure_cache_region(
     beaker.cache.cache_regions[region_name] = region_settings
 
 
-def get_cache_manager(region_name, cache_name, custom_ttl=None):
-    """
-    Creates a Beaker cache manager. Such instance can be used like that::
-
-    _namespace = caches.get_repo_namespace_key(caches.XXX, repo_name)
-    cache_manager = caches.get_cache_manager('repo_cache_long', _namespace)
-    _cache_key = caches.compute_key_from_params(repo_name, commit.raw_id)
-    def heavy_compute():
-        ...
-    result = cache_manager.get(_cache_key, createfunc=heavy_compute)
-
-    :param region_name: region from ini file
-    :param cache_name: custom cache name, usually prefix+repo_name. eg
-        file_switcher_repo1
-    :param custom_ttl: override .ini file timeout on this cache
-    :return: instance of cache manager
-    """
-
-    cache_config = cache_regions.get(region_name, DEFAULT_CACHE_MANAGER_CONFIG)
-    if custom_ttl:
-        log.debug('Updating region %s with custom ttl: %s',
-                  region_name, custom_ttl)
-        cache_config.update({'expire': custom_ttl})
-
-    return beaker.cache.Cache._get_cache(cache_name, cache_config)
-
-
-def clear_cache_manager(cache_manager):
-    """
-    namespace = 'foobar'
-    cache_manager = get_cache_manager('repo_cache_long', namespace)
-    clear_cache_manager(cache_manager)
-    """
-
-    log.debug('Clearing all values for cache manager %s', cache_manager)
-    cache_manager.clear()
-
-
-def clear_repo_caches(repo_name):
-    # invalidate cache manager for this repo
-    for prefix in USED_REPO_CACHES:
-        namespace = get_repo_namespace_key(prefix, repo_name)
-        cache_manager = get_cache_manager('repo_cache_long', namespace)
-        clear_cache_manager(cache_manager)
-
-
 def compute_key_from_params(*args):
     """
     Helper to compute key from given params to be used in cache manager
     """
-    return md5("_".join(map(safe_str, args)))
+    return sha1("_".join(map(safe_str, args)))
 
 
 def get_repo_namespace_key(prefix, repo_name):
     return '{0}_{1}'.format(prefix, compute_key_from_params(repo_name))
-
-
-def conditional_cache(region, prefix, condition, func):
-    """
-    Conditional caching function use like::
-        def _c(arg):
-            # heavy computation function
-            return data
-
-        # depending on the condition the compute is wrapped in cache or not
-        compute = conditional_cache('short_term', 'cache_desc',
-                                    condition=True, func=func)
-        return compute(arg)
-
-    :param region: name of cache region
-    :param prefix: cache region prefix
-    :param condition: condition for cache to be triggered, and
-        return data cached
-    :param func: wrapped heavy function to compute
-
-    """
-    wrapped = func
-    if condition:
-        log.debug('conditional_cache: True, wrapping call of '
-                  'func: %s into %s region cache', region, func)
-        cached_region = _cache_decorate((prefix,), None, None, region)
-        wrapped = cached_region(func)
-    return wrapped
 
 
 class ActiveRegionCache(object):

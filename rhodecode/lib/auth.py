@@ -23,6 +23,7 @@ authentication and permission libraries
 """
 
 import os
+import time
 import inspect
 import collections
 import fnmatch
@@ -47,8 +48,8 @@ from rhodecode.model.user import UserModel
 from rhodecode.model.db import (
     User, Repository, Permission, UserToPerm, UserGroupToPerm, UserGroupMember,
     UserIpMap, UserApiKeys, RepoGroup, UserGroup)
-from rhodecode.lib import caches
-from rhodecode.lib.utils2 import safe_unicode, aslist, safe_str, md5
+from rhodecode.lib import rc_cache
+from rhodecode.lib.utils2 import safe_unicode, aslist, safe_str, md5, safe_int, sha1
 from rhodecode.lib.utils import (
     get_repo_slug, get_repo_group_slug, get_user_group_slug)
 from rhodecode.lib.caching_query import FromCache
@@ -90,7 +91,7 @@ class PasswordGenerator(object):
     def gen_password(self, length, type_=None):
         if type_ is None:
             type_ = self.ALPHABETS_FULL
-        self.passwd = ''.join([random.choice(type_) for _ in xrange(length)])
+        self.passwd = ''.join([random.choice(type_) for _ in range(length)])
         return self.passwd
 
 
@@ -209,12 +210,12 @@ class _RhodeCodeCryptoSha256(_RhodeCodeCryptoBase):
         return hashlib.sha256(password).hexdigest() == hashed
 
 
-class _RhodeCodeCryptoMd5(_RhodeCodeCryptoBase):
+class _RhodeCodeCryptoTest(_RhodeCodeCryptoBase):
     ENC_PREF = '_'
 
     def hash_create(self, str_):
         self._assert_bytes(str_)
-        return hashlib.md5(str_).hexdigest()
+        return sha1(str_)
 
     def hash_check(self, password, hashed):
         """
@@ -224,18 +225,18 @@ class _RhodeCodeCryptoMd5(_RhodeCodeCryptoBase):
         :param hashed: password in hashed form
         """
         self._assert_bytes(password)
-        return hashlib.md5(password).hexdigest() == hashed
+        return sha1(password) == hashed
 
 
 def crypto_backend():
     """
     Return the matching crypto backend.
 
-    Selection is based on if we run tests or not, we pick md5 backend to run
+    Selection is based on if we run tests or not, we pick sha1-test backend to run
     tests faster since BCRYPT is expensive to calculate
     """
     if rhodecode.is_test:
-        RhodeCodeCrypto = _RhodeCodeCryptoMd5()
+        RhodeCodeCrypto = _RhodeCodeCryptoTest()
     else:
         RhodeCodeCrypto = _RhodeCodeCryptoBCrypt()
 
@@ -947,13 +948,13 @@ class AuthUser(object):
         perms = self.get_perms(user=self, cache=False)
 
         perms['repositories'] = {
-            k: v for k, v in perms['repositories'].iteritems()
+            k: v for k, v in perms['repositories'].items()
             if v != 'repository.none'}
         perms['repositories_groups'] = {
-            k: v for k, v in perms['repositories_groups'].iteritems()
+            k: v for k, v in perms['repositories_groups'].items()
             if v != 'group.none'}
         perms['user_groups'] = {
-            k: v for k, v in perms['user_groups'].iteritems()
+            k: v for k, v in perms['user_groups'].items()
             if v != 'usergroup.none'}
         return perms
 
@@ -975,21 +976,18 @@ class AuthUser(object):
             obj = Repository.get_by_repo_name(scope['repo_name'])
             if obj:
                 scope['repo_id'] = obj.repo_id
-        _scope = {
-            'repo_id': -1,
-            'user_group_id': -1,
-            'repo_group_id': -1,
-        }
-        _scope.update(scope)
-        cache_key = "_".join(map(safe_str, reduce(lambda a, b: a+b,
-                                                  _scope.items())))
-        if cache_key not in self._permissions_scoped_cache:
-            # store in cache to mimic how the @LazyProperty works,
-            # the difference here is that we use the unique key calculated
-            # from params and values
-            res = self.get_perms(user=self, cache=False, scope=_scope)
-            self._permissions_scoped_cache[cache_key] = res
-        return self._permissions_scoped_cache[cache_key]
+        _scope = collections.OrderedDict()
+        _scope['repo_id'] = -1
+        _scope['user_group_id'] = -1
+        _scope['repo_group_id'] = -1
+
+        for k in sorted(scope.keys()):
+            _scope[k] = scope[k]
+
+        # store in cache to mimic how the @LazyProperty works,
+        # the difference here is that we use the unique key calculated
+        # from params and values
+        return self.get_perms(user=self, cache=False, scope=_scope)
 
     def get_instance(self):
         return User.get(self.user_id)
@@ -1070,19 +1068,38 @@ class AuthUser(object):
         # inheritance of global permissions like create repo/fork repo etc
         user_inherit_default_permissions = user.inherit_default_permissions
 
-        log.debug('Computing PERMISSION tree for scope %s' % (scope, ))
-        compute = caches.conditional_cache(
-            'short_term', 'cache_desc',
-            condition=cache, func=_cached_perms_data)
-        result = compute(user_id, scope, user_is_admin,
+        cache_seconds = safe_int(
+            rhodecode.CONFIG.get('rc_cache.cache_perms.expiration_time'))
+
+        cache_on = cache or cache_seconds > 0
+        log.debug(
+            'Computing PERMISSION tree for user %s scope `%s` '
+            'with caching: %s[TTL: %ss]' % (user, scope, cache_on, cache_seconds or 0))
+
+        cache_namespace_uid = 'cache_user_auth.{}'.format(user_id)
+        region = rc_cache.get_or_create_region('cache_perms', cache_namespace_uid)
+
+        @region.conditional_cache_on_arguments(namespace=cache_namespace_uid,
+                                               condition=cache_on)
+        def compute_perm_tree(cache_name,
+                user_id, scope, user_is_admin,user_inherit_default_permissions,
+                explicit, algo, calculate_super_admin):
+            return _cached_perms_data(
+                user_id, scope, user_is_admin, user_inherit_default_permissions,
+                explicit, algo, calculate_super_admin)
+
+        start = time.time()
+        result = compute_perm_tree('permissions', user_id, scope, user_is_admin,
                          user_inherit_default_permissions, explicit, algo,
                          calculate_super_admin)
 
         result_repr = []
         for k in result:
             result_repr.append((k, len(result[k])))
+        total = time.time() - start
+        log.debug('PERMISSION tree for user %s computed in %.3fs: %s' % (
+            user, total, result_repr))
 
-        log.debug('PERMISSION tree computed %s' % (result_repr,))
         return result
 
     @property
@@ -1103,7 +1120,7 @@ class AuthUser(object):
         Returns list of repositories you're an admin of
         """
         return [
-            x[0] for x in self.permissions['repositories'].iteritems()
+            x[0] for x in self.permissions['repositories'].items()
             if x[1] == 'repository.admin']
 
     @property
@@ -1112,7 +1129,7 @@ class AuthUser(object):
         Returns list of repository groups you're an admin of
         """
         return [
-            x[0] for x in self.permissions['repositories_groups'].iteritems()
+            x[0] for x in self.permissions['repositories_groups'].items()
             if x[1] == 'group.admin']
 
     @property
@@ -1121,7 +1138,7 @@ class AuthUser(object):
         Returns list of user groups you're an admin of
         """
         return [
-            x[0] for x in self.permissions['user_groups'].iteritems()
+            x[0] for x in self.permissions['user_groups'].items()
             if x[1] == 'usergroup.admin']
 
     def repo_acl_ids(self, perms=None, name_filter=None, cache=False):
@@ -1135,20 +1152,17 @@ class AuthUser(object):
             perms = [
                 'repository.read', 'repository.write', 'repository.admin']
 
-        def _cached_repo_acl(user_id, perm_def, name_filter):
+        def _cached_repo_acl(user_id, perm_def, _name_filter):
             qry = Repository.query()
-            if name_filter:
-                ilike_expression = u'%{}%'.format(safe_unicode(name_filter))
+            if _name_filter:
+                ilike_expression = u'%{}%'.format(safe_unicode(_name_filter))
                 qry = qry.filter(
                     Repository.repo_name.ilike(ilike_expression))
 
             return [x.repo_id for x in
                     RepoList(qry, perm_set=perm_def)]
 
-        compute = caches.conditional_cache(
-            'long_term', 'repo_acl_ids',
-            condition=cache, func=_cached_repo_acl)
-        return compute(self.user_id, perms, name_filter)
+        return _cached_repo_acl(self.user_id, perms, name_filter)
 
     def repo_group_acl_ids(self, perms=None, name_filter=None, cache=False):
         """
@@ -1161,20 +1175,17 @@ class AuthUser(object):
             perms = [
                 'group.read', 'group.write', 'group.admin']
 
-        def _cached_repo_group_acl(user_id, perm_def, name_filter):
+        def _cached_repo_group_acl(user_id, perm_def, _name_filter):
             qry = RepoGroup.query()
-            if name_filter:
-                ilike_expression = u'%{}%'.format(safe_unicode(name_filter))
+            if _name_filter:
+                ilike_expression = u'%{}%'.format(safe_unicode(_name_filter))
                 qry = qry.filter(
                     RepoGroup.group_name.ilike(ilike_expression))
 
             return [x.group_id for x in
                     RepoGroupList(qry, perm_set=perm_def)]
 
-        compute = caches.conditional_cache(
-            'long_term', 'repo_group_acl_ids',
-            condition=cache, func=_cached_repo_group_acl)
-        return compute(self.user_id, perms, name_filter)
+        return _cached_repo_group_acl(self.user_id, perms, name_filter)
 
     def user_group_acl_ids(self, perms=None, name_filter=None, cache=False):
         """
@@ -1197,10 +1208,7 @@ class AuthUser(object):
             return [x.users_group_id for x in
                     UserGroupList(qry, perm_set=perm_def)]
 
-        compute = caches.conditional_cache(
-            'long_term', 'user_group_acl_ids',
-            condition=cache, func=_cached_user_group_acl)
-        return compute(self.user_id, perms, name_filter)
+        return _cached_user_group_acl(self.user_id, perms, name_filter)
 
     @property
     def ip_allowed(self):
@@ -1227,11 +1235,12 @@ class AuthUser(object):
         allowed_ips = AuthUser.get_allowed_ips(
             user_id, cache=True, inherit_from_default=inherit_from_default)
         if check_ip_access(source_ip=ip_addr, allowed_ips=allowed_ips):
-            log.debug('IP:%s is in range of %s' % (ip_addr, allowed_ips))
+            log.debug('IP:%s for user %s is in range of %s' % (
+                ip_addr, user_id, allowed_ips))
             return True
         else:
-            log.info('Access for IP:%s forbidden, '
-                     'not in %s' % (ip_addr, allowed_ips))
+            log.info('Access for IP:%s forbidden for user %s, '
+                     'not in %s' % (ip_addr, user_id, allowed_ips))
             return False
 
     def __repr__(self):
@@ -1268,8 +1277,8 @@ class AuthUser(object):
         _set = set()
 
         if inherit_from_default:
-            default_ips = UserIpMap.query().filter(
-                UserIpMap.user == User.get_default_user(cache=True))
+            def_user_id = User.get_default_user(cache=True).user_id
+            default_ips = UserIpMap.query().filter(UserIpMap.user_id == def_user_id)
             if cache:
                 default_ips = default_ips.options(
                     FromCache("sql_cache_short", "get_user_ips_default"))
@@ -1283,10 +1292,15 @@ class AuthUser(object):
                     # we get deleted objects here, we just skip them
                     pass
 
-        user_ips = UserIpMap.query().filter(UserIpMap.user_id == user_id)
-        if cache:
-            user_ips = user_ips.options(
-                FromCache("sql_cache_short", "get_user_ips_%s" % user_id))
+        # NOTE:(marcink) we don't want to load any rules for empty
+        # user_id which is the case of access of non logged users when anonymous
+        # access is disabled
+        user_ips = []
+        if user_id:
+            user_ips = UserIpMap.query().filter(UserIpMap.user_id == user_id)
+            if cache:
+                user_ips = user_ips.options(
+                    FromCache("sql_cache_short", "get_user_ips_%s" % user_id))
 
         for ip in user_ips:
             try:
@@ -1295,7 +1309,7 @@ class AuthUser(object):
                 # since we use heavy caching sometimes it happens that we get
                 # deleted objects here, we just skip them
                 pass
-        return _set or set(['0.0.0.0/0', '::/0'])
+        return _set or {ip for ip in ['0.0.0.0/0', '::/0']}
 
 
 def set_available_permissions(settings):
@@ -1627,7 +1641,7 @@ class HasRepoPermissionAllDecorator(PermsDecorator):
         repo_name = self._get_repo_name()
 
         try:
-            user_perms = set([perms['repositories'][repo_name]])
+            user_perms = {perms['repositories'][repo_name]}
         except KeyError:
             log.debug('cannot locate repo with name: `%s` in permissions defs',
                       repo_name)
@@ -1654,7 +1668,7 @@ class HasRepoPermissionAnyDecorator(PermsDecorator):
         repo_name = self._get_repo_name()
 
         try:
-            user_perms = set([perms['repositories'][repo_name]])
+            user_perms = {perms['repositories'][repo_name]}
         except KeyError:
             log.debug(
                 'cannot locate repo with name: `%s` in permissions defs',
@@ -1682,7 +1696,7 @@ class HasRepoGroupPermissionAllDecorator(PermsDecorator):
         perms = user.permissions
         group_name = self._get_repo_group_name()
         try:
-            user_perms = set([perms['repositories_groups'][group_name]])
+            user_perms = {perms['repositories_groups'][group_name]}
         except KeyError:
             log.debug(
                 'cannot locate repo group with name: `%s` in permissions defs',
@@ -1711,7 +1725,7 @@ class HasRepoGroupPermissionAnyDecorator(PermsDecorator):
         group_name = self._get_repo_group_name()
 
         try:
-            user_perms = set([perms['repositories_groups'][group_name]])
+            user_perms = {perms['repositories_groups'][group_name]}
         except KeyError:
             log.debug(
                 'cannot locate repo group with name: `%s` in permissions defs',
@@ -1738,7 +1752,7 @@ class HasUserGroupPermissionAllDecorator(PermsDecorator):
         perms = user.permissions
         group_name = self._get_user_group_name()
         try:
-            user_perms = set([perms['user_groups'][group_name]])
+            user_perms = {perms['user_groups'][group_name]}
         except KeyError:
             return False
 
@@ -1760,7 +1774,7 @@ class HasUserGroupPermissionAnyDecorator(PermsDecorator):
         perms = user.permissions
         group_name = self._get_user_group_name()
         try:
-            user_perms = set([perms['user_groups'][group_name]])
+            user_perms = {perms['user_groups'][group_name]}
         except KeyError:
             return False
 
@@ -1873,7 +1887,7 @@ class HasRepoPermissionAll(PermsFunction):
         self.repo_name = self._get_repo_name()
         perms = user.permissions
         try:
-            user_perms = set([perms['repositories'][self.repo_name]])
+            user_perms = {perms['repositories'][self.repo_name]}
         except KeyError:
             return False
         if self.required_perms.issubset(user_perms):
@@ -1896,7 +1910,7 @@ class HasRepoPermissionAny(PermsFunction):
         self.repo_name = self._get_repo_name()
         perms = user.permissions
         try:
-            user_perms = set([perms['repositories'][self.repo_name]])
+            user_perms = {perms['repositories'][self.repo_name]}
         except KeyError:
             return False
         if self.required_perms.intersection(user_perms):
@@ -1913,8 +1927,7 @@ class HasRepoGroupPermissionAny(PermsFunction):
     def check_permissions(self, user):
         perms = user.permissions
         try:
-            user_perms = set(
-                [perms['repositories_groups'][self.repo_group_name]])
+            user_perms = {perms['repositories_groups'][self.repo_group_name]}
         except KeyError:
             return False
         if self.required_perms.intersection(user_perms):
@@ -1931,8 +1944,7 @@ class HasRepoGroupPermissionAll(PermsFunction):
     def check_permissions(self, user):
         perms = user.permissions
         try:
-            user_perms = set(
-                [perms['repositories_groups'][self.repo_group_name]])
+            user_perms = {perms['repositories_groups'][self.repo_group_name]}
         except KeyError:
             return False
         if self.required_perms.issubset(user_perms):
@@ -1949,7 +1961,7 @@ class HasUserGroupPermissionAny(PermsFunction):
     def check_permissions(self, user):
         perms = user.permissions
         try:
-            user_perms = set([perms['user_groups'][self.user_group_name]])
+            user_perms = {perms['user_groups'][self.user_group_name]}
         except KeyError:
             return False
         if self.required_perms.intersection(user_perms):
@@ -1966,7 +1978,7 @@ class HasUserGroupPermissionAll(PermsFunction):
     def check_permissions(self, user):
         perms = user.permissions
         try:
-            user_perms = set([perms['user_groups'][self.user_group_name]])
+            user_perms = {perms['user_groups'][self.user_group_name]}
         except KeyError:
             return False
         if self.required_perms.issubset(user_perms):
@@ -2002,7 +2014,7 @@ class HasPermissionAnyMiddleware(object):
         perms = user.permissions_with_scope({'repo_name': repo_name})
 
         try:
-            user_perms = set([perms['repositories'][repo_name]])
+            user_perms = {perms['repositories'][repo_name]}
         except Exception:
             log.exception('Error while accessing user permissions')
             return False
@@ -2085,7 +2097,7 @@ class HasRepoPermissionAllApi(_BaseApiPerm):
     def check_permissions(self, perm_defs, repo_name=None, group_name=None,
                           user_group_name=None):
         try:
-            _user_perms = set([perm_defs['repositories'][repo_name]])
+            _user_perms = {perm_defs['repositories'][repo_name]}
         except KeyError:
             log.warning(traceback.format_exc())
             return False
@@ -2098,7 +2110,7 @@ class HasRepoPermissionAnyApi(_BaseApiPerm):
     def check_permissions(self, perm_defs, repo_name=None, group_name=None,
                           user_group_name=None):
         try:
-            _user_perms = set([perm_defs['repositories'][repo_name]])
+            _user_perms = {perm_defs['repositories'][repo_name]}
         except KeyError:
             log.warning(traceback.format_exc())
             return False
@@ -2111,7 +2123,7 @@ class HasRepoGroupPermissionAnyApi(_BaseApiPerm):
     def check_permissions(self, perm_defs, repo_name=None, group_name=None,
                           user_group_name=None):
         try:
-            _user_perms = set([perm_defs['repositories_groups'][group_name]])
+            _user_perms = {perm_defs['repositories_groups'][group_name]}
         except KeyError:
             log.warning(traceback.format_exc())
             return False
@@ -2124,7 +2136,7 @@ class HasRepoGroupPermissionAllApi(_BaseApiPerm):
     def check_permissions(self, perm_defs, repo_name=None, group_name=None,
                           user_group_name=None):
         try:
-            _user_perms = set([perm_defs['repositories_groups'][group_name]])
+            _user_perms = {perm_defs['repositories_groups'][group_name]}
         except KeyError:
             log.warning(traceback.format_exc())
             return False
@@ -2137,7 +2149,7 @@ class HasUserGroupPermissionAnyApi(_BaseApiPerm):
     def check_permissions(self, perm_defs, repo_name=None, group_name=None,
                           user_group_name=None):
         try:
-            _user_perms = set([perm_defs['user_groups'][user_group_name]])
+            _user_perms = {perm_defs['user_groups'][user_group_name]}
         except KeyError:
             log.warning(traceback.format_exc())
             return False

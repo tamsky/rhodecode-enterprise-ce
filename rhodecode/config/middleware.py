@@ -18,9 +18,11 @@
 # RhodeCode Enterprise Edition, including its added features, Support services,
 # and proprietary license terms, please see https://rhodecode.com/licenses/
 
+import os
 import logging
 import traceback
 import collections
+import tempfile
 
 from paste.gzipper import make_gzip_middleware
 from pyramid.wsgi import wsgiapp
@@ -38,6 +40,7 @@ from rhodecode.config import utils as config_utils
 from rhodecode.config.environment import load_pyramid_environment
 
 from rhodecode.lib.middleware.vcs import VCSMiddleware
+from rhodecode.lib.request import Request
 from rhodecode.lib.vcs import VCSCommunicationError
 from rhodecode.lib.exceptions import VCSServerUnavailable
 from rhodecode.lib.middleware.appenlight import wrap_in_appenlight_if_enabled
@@ -70,6 +73,15 @@ def make_pyramid_app(global_config, **settings):
       cases when these fragments are assembled from another place.
 
     """
+
+    # Allows to use format style "{ENV_NAME}" placeholders in the configuration. It
+    # will be replaced by the value of the environment variable "NAME" in this case.
+    environ = {
+        'ENV_{}'.format(key): value for key, value in os.environ.items()}
+
+    global_config = _substitute_values(global_config, environ)
+    settings = _substitute_values(settings, environ)
+
     sanitize_settings_and_apply_defaults(settings)
 
     config = Configurator(settings=settings)
@@ -192,6 +204,7 @@ def includeme_first(config):
 
 def includeme(config):
     settings = config.registry.settings
+    config.set_request_factory(Request)
 
     # plugin information
     config.registry.rhodecode_plugins = collections.OrderedDict()
@@ -208,6 +221,7 @@ def includeme(config):
     config.include('pyramid_mako')
     config.include('pyramid_beaker')
     config.include('rhodecode.lib.caches')
+    config.include('rhodecode.lib.rc_cache')
 
     config.include('rhodecode.authentication')
     config.include('rhodecode.integrations')
@@ -370,6 +384,7 @@ def sanitize_settings_and_apply_defaults(settings):
     # Call split out functions that sanitize settings for each topic.
     _sanitize_appenlight_settings(settings)
     _sanitize_vcs_settings(settings)
+    _sanitize_cache_settings(settings)
 
     # configure instance id
     config_utils.set_instance_id(settings)
@@ -389,6 +404,7 @@ def _sanitize_vcs_settings(settings):
     _string_setting(settings, 'vcs.svn.compatible_version', '')
     _string_setting(settings, 'git_rev_filter', '--all')
     _string_setting(settings, 'vcs.hooks.protocol', 'http')
+    _string_setting(settings, 'vcs.hooks.host', '127.0.0.1')
     _string_setting(settings, 'vcs.scm_app_implementation', 'http')
     _string_setting(settings, 'vcs.server', '')
     _string_setting(settings, 'vcs.server.log_level', 'debug')
@@ -406,6 +422,52 @@ def _sanitize_vcs_settings(settings):
     scm_app_impl = settings['vcs.scm_app_implementation']
     if scm_app_impl == 'rhodecode.lib.middleware.utils.scm_app_http':
         settings['vcs.scm_app_implementation'] = 'http'
+
+
+def _sanitize_cache_settings(settings):
+    _string_setting(settings, 'cache_dir',
+                    os.path.join(tempfile.gettempdir(), 'rc_cache'))
+    # cache_perms
+    _string_setting(
+        settings,
+        'rc_cache.cache_perms.backend',
+        'dogpile.cache.rc.file_namespace')
+    _int_setting(
+        settings,
+        'rc_cache.cache_perms.expiration_time',
+        60)
+    _string_setting(
+        settings,
+        'rc_cache.cache_perms.arguments.filename',
+        os.path.join(tempfile.gettempdir(), 'rc_cache_1'))
+
+    # cache_repo
+    _string_setting(
+        settings,
+        'rc_cache.cache_repo.backend',
+        'dogpile.cache.rc.file_namespace')
+    _int_setting(
+        settings,
+        'rc_cache.cache_repo.expiration_time',
+        60)
+    _string_setting(
+        settings,
+        'rc_cache.cache_repo.arguments.filename',
+        os.path.join(tempfile.gettempdir(), 'rc_cache_2'))
+
+    # sql_cache_short
+    _string_setting(
+        settings,
+        'rc_cache.sql_cache_short.backend',
+        'dogpile.cache.rc.memory_lru')
+    _int_setting(
+        settings,
+        'rc_cache.sql_cache_short.expiration_time',
+        30)
+    _int_setting(
+        settings,
+        'rc_cache.sql_cache_short.max_size',
+        10000)
 
 
 def _int_setting(settings, name, default):
@@ -436,3 +498,13 @@ def _string_setting(settings, name, default, lower=True):
     if lower:
         value = value.lower()
     settings[name] = value
+
+
+def _substitute_values(mapping, substitutions):
+    result = {
+        # Note: Cannot use regular replacements, since they would clash
+        # with the implementation of ConfigParser. Using "format" instead.
+        key: value.format(**substitutions)
+        for key, value in mapping.items()
+    }
+    return result
