@@ -335,6 +335,32 @@ self: super: {
       license = [ { fullName = "BSD-derived (http://www.repoze.org/LICENSE.txt)"; } ];
     };
   };
+  "defusedxml" = super.buildPythonPackage {
+    name = "defusedxml-0.5.0";
+    doCheck = false;
+    src = fetchurl {
+      url = "https://files.pythonhosted.org/packages/74/ba/4ba4e89e21b5a2e267d80736ea674609a0a33cc4435a6d748ef04f1f9374/defusedxml-0.5.0.tar.gz";
+      sha256 = "1x54n0h8hl92vvwyymx883fbqpqjwn2mc8fb383bcg3z9zwz5mr4";
+    };
+    meta = {
+      license = [ pkgs.lib.licenses.psfl ];
+    };
+  };
+  "dm.xmlsec.binding" = super.buildPythonPackage {
+    name = "dm.xmlsec.binding-1.3.7";
+    doCheck = false;
+    propagatedBuildInputs = [
+      self."setuptools"
+      self."lxml"
+    ];
+    src = fetchurl {
+      url = "https://files.pythonhosted.org/packages/2c/9e/7651982d50252692991acdae614af821fd6c79bc8dcd598ad71d55be8fc7/dm.xmlsec.binding-1.3.7.tar.gz";
+      sha256 = "03jjjscx1pz2nc0dwiw9nia02qbz1c6f0f9zkyr8fmvys2n5jkb3";
+    };
+    meta = {
+      license = [ pkgs.lib.licenses.bsdOriginal ];
+    };
+  };
   "docutils" = super.buildPythonPackage {
     name = "docutils-0.14";
     doCheck = false;
@@ -563,11 +589,11 @@ self: super: {
     };
   };
   "hupper" = super.buildPythonPackage {
-    name = "hupper-1.3.1";
+    name = "hupper-1.4";
     doCheck = false;
     src = fetchurl {
-      url = "https://files.pythonhosted.org/packages/cf/4b/467b826a84c8594b81f414b5ab6794e981951dac90ca40abaf9ea1cb36b0/hupper-1.3.1.tar.gz";
-      sha256 = "03mf13n6i4dd60wlb9m99ddl4m3lmly70cjp7f82vdkibfl1v6l9";
+      url = "https://files.pythonhosted.org/packages/fb/8e/0e45729d54e88c3791fb7e8c0c99530c5b9204bae73156a28b258583609a/hupper-1.4.tar.gz";
+      sha256 = "0f571zcphbja39blfgw657iwlj8wr7gxglvq0bi1xl7xawjapngr";
     };
     meta = {
       license = [ pkgs.lib.licenses.mit ];
@@ -671,6 +697,20 @@ self: super: {
       license = [ pkgs.lib.licenses.mit ];
     };
   };
+  "isodate" = super.buildPythonPackage {
+    name = "isodate-0.6.0";
+    doCheck = false;
+    propagatedBuildInputs = [
+      self."six"
+    ];
+    src = fetchurl {
+      url = "https://files.pythonhosted.org/packages/b1/80/fb8c13a4cd38eb5021dc3741a9e588e4d1de88d895c1910c6fc8a08b7a70/isodate-0.6.0.tar.gz";
+      sha256 = "1n7jkz68kk5pwni540pr5zdh99bf6ywydk1p5pdrqisrawylldif";
+    };
+    meta = {
+      license = [ pkgs.lib.licenses.bsdOriginal ];
+    };
+  };
   "itsdangerous" = super.buildPythonPackage {
     name = "itsdangerous-0.24";
     doCheck = false;
@@ -756,11 +796,11 @@ self: super: {
     };
   };
   "lxml" = super.buildPythonPackage {
-    name = "lxml-3.7.3";
+    name = "lxml-4.2.5";
     doCheck = false;
     src = fetchurl {
-      url = "https://files.pythonhosted.org/packages/39/e8/a8e0b1fa65dd021d48fe21464f71783655f39a41f218293c1c590d54eb82/lxml-3.7.3.tar.gz";
-      sha256 = "1iv1jgkqn1hdh1xyxri6g0y1s67h01jzjkw2nhkx3rqylmw2sl5a";
+      url = "https://files.pythonhosted.org/packages/4b/20/ddf5eb3bd5c57582d2b4652b4bbcf8da301bdfe5d805cb94e805f4d7464d/lxml-4.2.5.tar.gz";
+      sha256 = "0zw0y9hs0nflxhl9cs6ipwwh53szi3w2x06wl0k9cylyqac0cwin";
     };
     meta = {
       license = [ pkgs.lib.licenses.bsdOriginal ];
@@ -1479,14 +1519,14 @@ self: super: {
     };
   };
   "python-dateutil" = super.buildPythonPackage {
-    name = "python-dateutil-2.7.3";
+    name = "python-dateutil-2.7.5";
     doCheck = false;
     propagatedBuildInputs = [
       self."six"
     ];
     src = fetchurl {
-      url = "https://files.pythonhosted.org/packages/a0/b0/a4e3241d2dee665fea11baec21389aec6886655cd4db7647ddf96c3fad15/python-dateutil-2.7.3.tar.gz";
-      sha256 = "1f7h54lg0w2ckch7592xpjkh8dg87k2br256h0iw49zn6bg02w72";
+      url = "https://files.pythonhosted.org/packages/0e/01/68747933e8d12263d41ce08119620d9a7e5eb72c876a3442257f74490da0/python-dateutil-2.7.5.tar.gz";
+      sha256 = "00ngwcdw36w5b37b51mdwn3qxid9zdf3kpffv2q6n9kl05y2iyc8";
     };
     meta = {
       license = [ pkgs.lib.licenses.bsdOriginal pkgs.lib.licenses.asl20 { fullName = "Dual License"; } ];
@@ -1541,6 +1581,22 @@ self: super: {
     };
     meta = {
       license = [ { fullName = "License :: OSI Approved :: MIT License"; } pkgs.lib.licenses.mit ];
+    };
+  };
+  "python-saml" = super.buildPythonPackage {
+    name = "python-saml-2.4.2";
+    doCheck = false;
+    propagatedBuildInputs = [
+      self."dm.xmlsec.binding"
+      self."isodate"
+      self."defusedxml"
+    ];
+    src = fetchurl {
+      url = "https://files.pythonhosted.org/packages/79/a8/a6611017e0883102fd5e2b73c9d90691b8134e38247c04ee1531d3dc647c/python-saml-2.4.2.tar.gz";
+      sha256 = "0dls4hwvf13yg7x5yfjrghbywg8g38vn5vr0rsf70hli3ydbfm43";
+    };
+    meta = {
+      license = [ pkgs.lib.licenses.mit ];
     };
   };
   "pytz" = super.buildPythonPackage {
@@ -1615,7 +1671,7 @@ self: super: {
     };
   };
   "rhodecode-enterprise-ce" = super.buildPythonPackage {
-    name = "rhodecode-enterprise-ce-4.14.1";
+    name = "rhodecode-enterprise-ce-4.15.0";
     buildInputs = [
       self."pytest"
       self."py"
@@ -1697,6 +1753,7 @@ self: super: {
       self."python-ldap"
       self."python-memcached"
       self."python-pam"
+      self."python-saml"
       self."pytz"
       self."tzlocal"
       self."pyzmq"
@@ -1822,11 +1879,11 @@ self: super: {
     };
   };
   "setuptools" = super.buildPythonPackage {
-    name = "setuptools-40.4.3";
+    name = "setuptools-40.5.0";
     doCheck = false;
     src = fetchurl {
-      url = "https://files.pythonhosted.org/packages/6e/9c/6a003320b00ef237f94aa74e4ad66c57a7618f6c79d67527136e2544b728/setuptools-40.4.3.zip";
-      sha256 = "058v6zns4634n4al2nmmvp15j8nrgwn8wjrbdks47wk3vm05gg5c";
+      url = "https://files.pythonhosted.org/packages/26/e5/9897eee1100b166a61f91b68528cb692e8887300d9cbdaa1a349f6304b79/setuptools-40.5.0.zip";
+      sha256 = "1aqykblgfxd21q9ccrgdxwl4xjifpq01l29ssbgdn2kn987j0aia";
     };
     meta = {
       license = [ pkgs.lib.licenses.mit ];
