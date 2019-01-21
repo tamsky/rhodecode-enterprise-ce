@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Copyright (C) 2010-2018 RhodeCode GmbH
+# Copyright (C) 2010-2019 RhodeCode GmbH
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License, version 3
@@ -1130,10 +1130,10 @@ class UserApiKeys(Base, BaseModel):
 
     def _get_scope(self):
         if self.repo:
-            return repr(self.repo)
+            return 'Repository: {}'.format(self.repo.repo_name)
         if self.repo_group:
-            return repr(self.repo_group) + ' (recursive)'
-        return 'global'
+            return 'RepositoryGroup: {} (recursive)'.format(self.repo_group.group_name)
+        return 'Global'
 
     @property
     def scope_humanized(self):
@@ -2276,7 +2276,7 @@ class Repository(Base, BaseModel):
             # use no-cache version here
             scm_repo = self.scm_instance(cache=False, config=config)
 
-            empty = scm_repo.is_empty()
+            empty = not scm_repo or scm_repo.is_empty()
             if not empty:
                 cs_cache = scm_repo.get_commit(
                     pre_load=["author", "date", "message", "parents"])
@@ -3411,7 +3411,10 @@ class ChangesetComment(Base, BaseModel):
 
     comment_type = Column('comment_type',  Unicode(128), nullable=True, default=COMMENT_TYPE_NOTE)
     resolved_comment_id = Column('resolved_comment_id', Integer(), ForeignKey('changeset_comments.comment_id'), nullable=True)
-    resolved_comment = relationship('ChangesetComment', remote_side=comment_id, backref='resolved_by')
+
+    resolved_comment = relationship('ChangesetComment', remote_side=comment_id, back_populates='resolved_by')
+    resolved_by = relationship('ChangesetComment', back_populates='resolved_comment')
+
     author = relationship('User', lazy='joined')
     repo = relationship('Repository')
     status_change = relationship('ChangesetStatus', cascade="all, delete, delete-orphan", lazy='joined')
@@ -3568,6 +3571,32 @@ class ChangesetStatus(Base, BaseModel):
         return data
 
 
+class _SetState(object):
+    """
+    Context processor allowing changing state for sensitive operation such as
+    pull request update or merge
+    """
+
+    def __init__(self, pull_request, pr_state, back_state=None):
+        self._pr = pull_request
+        self._org_state = back_state or pull_request.pull_request_state
+        self._pr_state = pr_state
+
+    def __enter__(self):
+        log.debug('StateLock: entering set state context, setting state to: `%s`',
+                  self._pr_state)
+        self._pr.pull_request_state = self._pr_state
+        Session().add(self._pr)
+        Session().commit()
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        log.debug('StateLock: exiting set state context, setting state to: `%s`',
+                  self._org_state)
+        self._pr.pull_request_state = self._org_state
+        Session().add(self._pr)
+        Session().commit()
+
+
 class _PullRequestBase(BaseModel):
     """
     Common attributes of pull request and version entries.
@@ -3577,6 +3606,12 @@ class _PullRequestBase(BaseModel):
     STATUS_NEW = u'new'
     STATUS_OPEN = u'open'
     STATUS_CLOSED = u'closed'
+
+    # available states
+    STATE_CREATING = u'creating'
+    STATE_UPDATING = u'updating'
+    STATE_MERGING = u'merging'
+    STATE_CREATED = u'created'
 
     title = Column('title', Unicode(255), nullable=True)
     description = Column(
@@ -3592,6 +3627,8 @@ class _PullRequestBase(BaseModel):
     updated_on = Column(
         'updated_on', DateTime(timezone=False), nullable=False,
         default=datetime.datetime.now)
+
+    pull_request_state = Column("pull_request_state", String(255), nullable=True)
 
     @declared_attr
     def user_id(cls):
@@ -3610,7 +3647,33 @@ class _PullRequestBase(BaseModel):
             'org_repo_id', Integer(), ForeignKey('repositories.repo_id'),
             nullable=False)
 
-    source_ref = Column('org_ref', Unicode(255), nullable=False)
+    _source_ref = Column('org_ref', Unicode(255), nullable=False)
+
+    @hybrid_property
+    def source_ref(self):
+        return self._source_ref
+
+    @source_ref.setter
+    def source_ref(self, val):
+        parts = (val or '').split(':')
+        if len(parts) != 3:
+            raise ValueError(
+                'Invalid reference format given: {}, expected X:Y:Z'.format(val))
+        self._source_ref = safe_unicode(val)
+
+    _target_ref = Column('other_ref', Unicode(255), nullable=False)
+
+    @hybrid_property
+    def target_ref(self):
+        return self._target_ref
+
+    @target_ref.setter
+    def target_ref(self, val):
+        parts = (val or '').split(':')
+        if len(parts) != 3:
+            raise ValueError(
+                'Invalid reference format given: {}, expected X:Y:Z'.format(val))
+        self._target_ref = safe_unicode(val)
 
     @declared_attr
     def target_repo_id(cls):
@@ -3619,7 +3682,6 @@ class _PullRequestBase(BaseModel):
             'other_repo_id', Integer(), ForeignKey('repositories.repo_id'),
             nullable=False)
 
-    target_ref = Column('other_ref', Unicode(255), nullable=False)
     _shadow_merge_ref = Column('shadow_merge_ref', Unicode(255), nullable=True)
 
     # TODO: dan: rename column to last_merge_source_rev
@@ -3692,7 +3754,8 @@ class _PullRequestBase(BaseModel):
     def shadow_merge_ref(self, ref):
         self._shadow_merge_ref = self.reference_to_unicode(ref)
 
-    def unicode_to_reference(self, raw):
+    @staticmethod
+    def unicode_to_reference(raw):
         """
         Convert a unicode (or string) to a reference object.
         If unicode evaluates to False it returns None.
@@ -3703,7 +3766,8 @@ class _PullRequestBase(BaseModel):
         else:
             return None
 
-    def reference_to_unicode(self, ref):
+    @staticmethod
+    def reference_to_unicode(ref):
         """
         Convert a reference object to unicode.
         If reference is None it returns None.
@@ -3740,6 +3804,7 @@ class _PullRequestBase(BaseModel):
             'title': pull_request.title,
             'description': pull_request.description,
             'status': pull_request.status,
+            'state': pull_request.pull_request_state,
             'created_on': pull_request.created_on,
             'updated_on': pull_request.updated_on,
             'commit_ids': pull_request.revisions,
@@ -3779,6 +3844,20 @@ class _PullRequestBase(BaseModel):
         }
 
         return data
+
+    def set_state(self, pull_request_state, final_state=None):
+        """
+        # goes from initial state to updating to initial state.
+        # initial state can be changed by specifying back_state=
+        with pull_request_obj.set_state(PullRequest.STATE_UPDATING):
+           pull_request.merge()
+
+        :param pull_request_state:
+        :param final_state:
+
+        """
+
+        return _SetState(self, pull_request_state, back_state=final_state)
 
 
 class PullRequest(Base, _PullRequestBase):

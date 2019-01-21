@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Copyright (C) 2010-2018 RhodeCode GmbH
+# Copyright (C) 2010-2019 RhodeCode GmbH
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License, version 3
@@ -165,7 +165,7 @@ def error_handler(exception, request):
 
     error_explanation = base_response.explanation or str(base_response)
     if base_response.status_code == 404:
-        error_explanation += " Or you don't have permission to access it."
+        error_explanation += " Optionally you don't have permission to access this page."
     c = AttributeDict()
     c.error_message = base_response.status
     c.error_explanation = error_explanation
@@ -708,18 +708,29 @@ def _string_setting(settings, name, default, lower=True, default_when_empty=Fals
 
 
 def _substitute_values(mapping, substitutions):
+    result = {}
 
     try:
-        result = {
+        for key, value in mapping.items():
+            # initialize without substitution first
+            result[key] = value
+
             # Note: Cannot use regular replacements, since they would clash
             # with the implementation of ConfigParser. Using "format" instead.
-            key: value.format(**substitutions)
-            for key, value in mapping.items()
-        }
-    except KeyError as e:
-        raise ValueError(
-            'Failed to substitute env variable: {}. '
-            'Make sure you have specified this env variable without ENV_ prefix'.format(e))
+            try:
+                result[key] = value.format(**substitutions)
+            except KeyError as e:
+                env_var = '{}'.format(e.args[0])
+
+                msg = 'Failed to substitute: `{key}={{{var}}}` with environment entry. ' \
+                      'Make sure your environment has {var} set, or remove this ' \
+                      'variable from config file'.format(key=key, var=env_var)
+
+                if env_var.startswith('ENV_'):
+                    raise ValueError(msg)
+                else:
+                    log.warning(msg)
+
     except ValueError as e:
         log.warning('Failed to substitute ENV variable: %s', e)
         result = mapping

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Copyright (C) 2011-2018 RhodeCode GmbH
+# Copyright (C) 2011-2019 RhodeCode GmbH
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License, version 3
@@ -34,9 +34,10 @@ from pyramid.response import Response
 import rhodecode
 from rhodecode.apps._base import RepoAppView
 
-from rhodecode.controllers.utils import parse_path_ref
+
 from rhodecode.lib import diffs, helpers as h, rc_cache
 from rhodecode.lib import audit_logger
+from rhodecode.lib.view_utils import parse_path_ref
 from rhodecode.lib.exceptions import NonRelativePathError
 from rhodecode.lib.codeblocks import (
     filenode_as_lines_tokens, filenode_as_annotated_lines_tokens)
@@ -83,6 +84,7 @@ class RepoFilesView(RepoAppView):
     def load_default_context(self):
         c = self._get_local_tmpl_context(include_app_defaults=True)
         c.rhodecode_repo = self.rhodecode_vcs_repo
+        c.enable_downloads = self.db_repo.enable_downloads
         return c
 
     def _ensure_not_locked(self):

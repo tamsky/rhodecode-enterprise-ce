@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Copyright (C) 2016-2018 RhodeCode GmbH
+# Copyright (C) 2016-2019 RhodeCode GmbH
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License, version 3
@@ -248,6 +248,12 @@ class RepoAppView(BaseAppView):
 
             else:  # redirect if we don't show missing requirements
                 raise HTTPFound(h.route_path('home'))
+
+        c.has_origin_repo_read_perm = False
+        if self.db_repo.fork:
+            c.has_origin_repo_read_perm = h.HasRepoPermissionAny(
+                'repository.write', 'repository.read', 'repository.admin')(
+                self.db_repo.fork.repo_name, 'summary fork link')
 
         return c
 

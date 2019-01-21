@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Copyright (C) 2011-2018 RhodeCode GmbH
+# Copyright (C) 2011-2019 RhodeCode GmbH
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Affero General Public License, version 3
@@ -564,6 +564,12 @@ def age(prevdate, now=None, show_short_version=False, show_suffix=True,
     return _(u'just now')
 
 
+def age_from_seconds(seconds):
+    seconds = safe_int(seconds) or 0
+    prevdate = time_to_datetime(time.time() + seconds)
+    return age(prevdate, show_suffix=False, show_short_version=True)
+
+
 def cleaned_uri(uri):
     """
     Quotes '[' and ']' from uri if there is only one of them.
@@ -1009,3 +1015,14 @@ def glob2re(pat):
         else:
             res = res + re.escape(c)
     return res + '\Z(?ms)'
+
+
+def parse_byte_string(size_str):
+    match = re.match(r'(\d+)(MB|KB)', size_str, re.IGNORECASE)
+    if not match:
+        raise ValueError('Given size:%s is invalid, please make sure '
+                         'to use format of <num>(MB|KB)' % size_str)
+
+    _parts = match.groups()
+    num, type_ = _parts
+    return long(num) * {'mb': 1024*1024, 'kb': 1024}[type_.lower()]

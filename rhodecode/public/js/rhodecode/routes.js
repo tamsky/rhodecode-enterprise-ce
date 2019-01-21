@@ -102,7 +102,8 @@ function registerRCRoutes() {
     pyroutes.register('user_edit_global_perms_update', '/_admin/users/%(user_id)s/edit/global_permissions/update', ['user_id']);
     pyroutes.register('user_update', '/_admin/users/%(user_id)s/update', ['user_id']);
     pyroutes.register('user_delete', '/_admin/users/%(user_id)s/delete', ['user_id']);
-    pyroutes.register('user_force_password_reset', '/_admin/users/%(user_id)s/password_reset', ['user_id']);
+    pyroutes.register('user_enable_force_password_reset', '/_admin/users/%(user_id)s/password_reset_enable', ['user_id']);
+    pyroutes.register('user_disable_force_password_reset', '/_admin/users/%(user_id)s/password_reset_disable', ['user_id']);
     pyroutes.register('user_create_personal_repo_group', '/_admin/users/%(user_id)s/create_repo_group', ['user_id']);
     pyroutes.register('edit_user_auth_tokens_delete', '/_admin/users/%(user_id)s/edit/auth_tokens/delete', ['user_id']);
     pyroutes.register('edit_user_ssh_keys', '/_admin/users/%(user_id)s/edit/ssh_keys', ['user_id']);
@@ -212,7 +213,7 @@ function registerRCRoutes() {
     pyroutes.register('pullrequest_show_all', '/%(repo_name)s/pull-request', ['repo_name']);
     pyroutes.register('pullrequest_show_all_data', '/%(repo_name)s/pull-request-data', ['repo_name']);
     pyroutes.register('pullrequest_repo_refs', '/%(repo_name)s/pull-request/refs/%(target_repo_name)s', ['repo_name', 'target_repo_name']);
-    pyroutes.register('pullrequest_repo_destinations', '/%(repo_name)s/pull-request/repo-destinations', ['repo_name']);
+    pyroutes.register('pullrequest_repo_targets', '/%(repo_name)s/pull-request/repo-targets', ['repo_name']);
     pyroutes.register('pullrequest_new', '/%(repo_name)s/pull-request/new', ['repo_name']);
     pyroutes.register('pullrequest_create', '/%(repo_name)s/pull-request/create', ['repo_name']);
     pyroutes.register('pullrequest_update', '/%(repo_name)s/pull-request/%(pull_request_id)s/update', ['repo_name', 'pull_request_id']);
