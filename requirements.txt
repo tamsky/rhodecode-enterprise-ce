@@ -69,7 +69,7 @@ pyzmq==14.6.0
 py-gfm==0.1.4
 redis==2.10.6
 repoze.lru==0.7
-requests==2.9.1
+requests==2.20.0
 routes==2.4.1
 simplejson==3.16.0
 six==1.11.0
